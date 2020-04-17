@@ -548,7 +548,7 @@ def get_AV_map(table):
 
    sfd = SFDQuery()
    
-   AV = 0.86*(3.1*sfd(icrs))  #0.86 is for Schlafly & Finkbeiner 2011 (ApJ 737, 103)
+   AV = 3.1*sfd(icrs)  # multiply by 0.86 if you want to use Schlafly & Finkbeiner 2011 (ApJ 737, 103)
 
    return AV
 
@@ -748,8 +748,8 @@ def pm_cleaning_GMM_recursive(table, vars, alt_table = None, data_0 = None, n_co
       ax1.scatter(table.pmra, table.pmdec, c = fitting.member_prob[fitting.member_label], s = 1, zorder = 1)
       ax1.set_xlabel(r'$PM_{RA}$')
       ax1.set_ylabel(r'$PM_{Dec}$')
-      ax1.set_xlim(table.pmra.mean()-3*table.pmra.std(), table.pmra.mean()+3*table.pmra.std())
-      ax1.set_ylim(table.pmdec.mean()-3*table.pmdec.std(), table.pmdec.mean()+3*table.pmdec.std())      
+      ax1.set_xlim(table.pmra.mean()-5*table.pmra.std(), table.pmra.mean()+5*table.pmra.std())
+      ax1.set_ylim(table.pmdec.mean()-5*table.pmdec.std(), table.pmdec.mean()+5*table.pmdec.std())      
       ax1.grid()
       plt.savefig(plot_name)
       plt.close('all')
@@ -786,6 +786,7 @@ def main(argv):
    parser.add_argument('--feh', type=float, nargs='+', default= None, help='Metallicity ([Fe/H]) of the system. Both, a single value or a range can be provided. Default is range [Fe/H] within [-2.5, -0.5].')
    parser.add_argument('--cmd_broadening', type=float, default=0.05, help='CMD intrinsic color broadening in magnitudes. It is used to compute the maximum distance in color to a star as to consider it as possible bember of an isochrone population. Default is 0.01.')
    parser.add_argument('--clipping_sigma_cmd', type=float, default=3., help='Sigma used for clipping in the cmd. i.e. distance to the isochrone. Default is 3.')
+   parser.add_argument('--extend_HB', type=str2bool, default=False, help='Whether to extend the HB of the isochrones in order to cover extremely low-metallicity populations.')
    parser.add_argument('--clipping_prob_pm', type=float, default=3., help='Sigma used for clipping pm and parallax. Default is 3.')
    parser.add_argument('--pm_n_components', type=int, default=1, help='Number of Gaussian componnents for pm and parallax clustering. Default is 1.')
    parser.add_argument('--hst_filters', type=str, nargs='+', default = ['any'], help='Required filter for the HST images.')
@@ -845,7 +846,7 @@ def main(argv):
       Gaia_table[['gmag_0','bpmag_0','rpmag_0']] = Gaia_table[['gmag','bpmag','rpmag']] - (simple_reddening_correction(Gaia_table['AV']) + (5.*np.log10((args.distance)*1e3)-5.))
 
       isochrones = read_isochrones(args.age, args.z, Gmag_max = args.gmag_max)
-      isochrones_cmd = combine_isochrones(isochrones, cmd_broadening = args.cmd_broadening)
+      isochrones_cmd = combine_isochrones(isochrones, cmd_broadening = args.cmd_broadening, extended_HB = args.extend_HB)
 
       labels_cmd = cmd_cleaning(Gaia_table, isochrones_cmd, clipping_sigma = args.clipping_sigma_cmd, plots = args.plots, plot_name = Gaia_path+'CMD_selection.png')
 
