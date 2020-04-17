@@ -1,5 +1,4 @@
-# HST-GAIA
-Pipeline to derive proper motions (PM) by combining HST and Gaia.
+#Project A
 
 To get some help about the parameters type:
 
