@@ -1,0 +1,41 @@
+astropy @ file:///Users/runner/miniforge3/conda-bld/astropy_1617305650087/work
+astropy-healpix==0.5
+astroquery==0.4
+beautifulsoup4 @ file:///home/conda/feedstock_root/build_artifacts/beautifulsoup4_1601745390275/work
+brotlipy==0.7.0
+certifi==2020.12.5
+cffi @ file:///Users/runner/miniforge3/conda-bld/cffi_1613413897768/work
+chardet @ file:///Users/runner/miniforge3/conda-bld/chardet_1610093485994/work
+cryptography @ file:///Users/runner/miniforge3/conda-bld/cryptography_1616851693031/work
+cycler==0.10.0
+html5lib @ file:///home/conda/feedstock_root/build_artifacts/html5lib_1592930327044/work
+idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1593328102638/work
+importlib-metadata @ file:///Users/runner/miniforge3/conda-bld/importlib-metadata_1622064164262/work
+joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1612898609989/work
+keyring @ file:///Users/runner/miniforge3/conda-bld/keyring_1616689358170/work
+kiwisolver @ file:///Users/runner/miniforge3/conda-bld/kiwisolver_1610099791311/work
+matplotlib @ file:///Users/runner/miniforge3/conda-bld/matplotlib-suite_1620506054670/work
+numpy @ file:///Users/runner/miniforge3/conda-bld/numpy_1622014633893/work
+olefile @ file:///home/conda/feedstock_root/build_artifacts/olefile_1602866521163/work
+pandas==1.2.4
+Pillow @ file:///Users/runner/miniforge3/conda-bld/pillow_1621288030180/work
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/pycparser_1593275161868/work
+pyerfa @ file:///Users/runner/miniforge3/conda-bld/pyerfa_1612741105871/work
+pyOpenSSL @ file:///home/conda/feedstock_root/build_artifacts/pyopenssl_1608055815057/work
+pyparsing==2.4.7
+PySocks @ file:///Users/runner/miniforge3/conda-bld/pysocks_1610291468418/work
+python-dateutil==2.8.1
+pytz @ file:///home/conda/feedstock_root/build_artifacts/pytz_1612179539967/work
+reproject @ file:///Users/runner/miniforge3/conda-bld/reproject_1606512134251/work
+requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1608156231189/work
+scikit-learn @ file:///Users/runner/miniforge3/conda-bld/scikit-learn_1619628628051/work
+scipy @ file:///Users/runner/miniforge3/conda-bld/scipy_1619562045896/work
+Shapely @ file:///Users/runner/miniforge3/conda-bld/shapely_1621535510011/work
+six @ file:///home/conda/feedstock_root/build_artifacts/six_1620240208055/work
+soupsieve @ file:///home/conda/feedstock_root/build_artifacts/soupsieve_1597680516047/work
+threadpoolctl @ file:///tmp/tmp79xdzxkt/threadpoolctl-2.1.0-py3-none-any.whl
+tornado @ file:///Users/runner/miniforge3/conda-bld/tornado_1610094698292/work
+typing-extensions @ file:///home/conda/feedstock_root/build_artifacts/typing_extensions_1602702424206/work
+urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1622056799390/work
+webencodings==0.5.1
+zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1614945704755/work
