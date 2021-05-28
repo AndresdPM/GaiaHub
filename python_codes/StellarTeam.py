@@ -2073,7 +2073,7 @@ def main(argv):
    """
    The script tries to load an existing Gaia table, otherwise it will download it from the Gaia archive.
    """
-   installation_path = '/Users/user/StellarTeam'
+   installation_path = '/Users/user'
    remove_file('./tmp')
    os.symlink(installation_path, './tmp')
 
