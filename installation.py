@@ -135,26 +135,6 @@ def install_python_dependencies(packages):
    print('\n')
 
 
-def make_alias(installation_folder):
-   """
-   This will add alliases at the bash_profile file or the bashrc
-   """
-   
-   home = os.environ['HOME']
-
-   alias =  "\n# Added by StellarTeam installer\n"\
-            "alias StellarTeam='python %s'\n"%(installation_folder+'/python_codes/StellarTeam.py')
-
-   if os.path.isfile(home+'/.bash_profile'):
-      f = open(home+'/.bash_profile', "a")
-      f.write(alias)
-      f.close()
-   elif os.path.isfile(home+'/.bashrc'):
-      f = open(home+'/.bashrc', "a")
-      f.write(alias)
-      f.close()
-
-
 def str2bool(v):
    """
    This routine converts ascii input to boolean.
@@ -166,6 +146,7 @@ def str2bool(v):
       return False
    else:
       raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 
 def add_path(installation_folder):
@@ -187,63 +168,155 @@ def add_path(installation_folder):
    #close the file
    fin.close()
 
+
+def replace_text(file_in, text_to_replace, replace_by):
+   """
+   This routine hardcodes the installation folder in the python script.
+   """
+
+   #open the file
+   f = open(file_in, "rt")
+   data = f.read()
+   #replace all occurrences of the required string
+   data = data.replace(text_to_replace, replace_by)
+   #close the input file
+   f.close()
+   #open the input file in write mode
+   f = open(file_in, "wt")
+   #overrite the input file with the resulting data
+   f.write(data)
+   #close the file
+   f.close()
+
+
+def make_alias(installation_folder):
+   """
+   This will add alliases at the bash_profile file or the bashrc
+   """
    
+   import re
+   import shutil
+
+   home = os.environ['HOME']
+
+   intro = "\n# Added by StellarTeam installer\n"
+   alias = "alias StellarTeam='python %s'\n"%(installation_folder+'/python_codes/StellarTeam.py')
+
+   if os.path.isfile(home+'/.bash_profile'):
+      bash_file = home+'/.bash_profile'
+   elif os.path.isfile(home+'/.bashrc'):
+      bash_file = home+'/.bashrc'
+ 
+   shutil.copy(bash_file, bash_file+'.bkp')
+
+   blank_file = ''
+
+   f = open(bash_file, 'r')
+   for line in f.readlines():
+      if(re.search('^# Added by StellarTeam installer',line)):
+         line = re.sub('^# Added by StellarTeam installer\n','',line)
+      if(re.search('^alias StellarTeam=',line)):
+         line = re.sub('^alias StellarTeam=.+\n','',line)
+      blank_file = blank_file + line
+   f.close()
+
+   #Write the new bashrc
+   f = open(bash_file, 'w')
+   f.write(blank_file)
+   f.close()
+
+   f = open(bash_file, "a")
+   f.write(intro+alias)
+   f.close()
+
+
 def installation():
    """
    This routine will install all possible dependencies and codes.
    """ 
-   
-   print('---------------------------------------------------')
-   print('Welcome to the installation process of StellarTeam!')
-   print('---------------------------------------------------')
-   
+
+
    master = 'StellarTeam'
    default_dir = os.environ['HOME']+'/'+master
-   
-   print('StellarTeam needs approximatelly 2.5 GB of space in your disk.\n')
 
-   print('By default, StellarTeam will be installed in the home directory:\n')
-   print(default_dir)
-   print('\nThis installation will remove any previous installation in such folder.\n')
-   installation_folder = input('Press enter to accept or introduce an alternative path if you wish.\n') or default_dir
+   help =  '------------------------------------------------------------------------------\n'\
+           'Welcome to the installation process of StellarTeam\n'\
+           '------------------------------------------------------------------------------\n'\
+           '- %s needs approximatelly 2.5 GB of space in your disk.\n'\
+           '- The installation will also attempt to install several python packages.\n'\
+           '- If you do not want to modify your current python enviroment \n'\
+           '  we recommend setting a dedicated conda enviroment to install and run %s.\n'\
+           '------------------------------------------------------------------------------\n'%(master, master)
+
+   print('\n'+help+'\n')
    
    try:
-      remove_files(installation_folder)
+      continue = str2bool(input('Do you wish to continue? (y,n): '))
+      if continue:
+         try:
+            print('By default, %s will be installed in the home directory:\n'%master)
+            print(default_dir)
+            print('\nThis installation will remove any previous installation in such folder.\n')
+            installation_folder = input('Press enter to accept or introduce an alternative path if you wish.\n') or default_dir
+
+            try:
+               remove_files(installation_folder)
+            except:
+               pass
+
+            create_dir(installation_folder)
+
+            clone_repo(os.path.split(installation_folder)[0], repo = 'https://github.com/AndresdPM/%s'%master)
+
+            print('Succesfully cloned the repository at %s\n'%installation_folder)
+
+            # Add the installation folder
+            replace_text(installation_folder+"/python_codes/%s.py", "installation_path = '/Users/user/%s'", "installation_path = '%s'"%(installation_folder, master, master))
+
+            print('\n\nCompiling Fortran modules...\n')
+
+            try:
+               compile_fortran(installation_folder)
+            except:
+               print('WARNING: Something went wrong when compiling the Fortran libraries.')
+               print('Be sure to have installed GNU Fortran (GCC) (Tested in version 8.2.0).')
+               print('Visit "https://gcc.gnu.org/wiki/GFortranBinaries" for more information.')
+               print('\nINSTALLATION ABORTED!\n')
+               sys.exit(1)
+
+            print('Installing Python dependencies...\n')
+            
+            install_python_dependencies(default_dir+'/python_codes/python_dependencies.txt')
+
+            get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~jayander', libs = ['STDPSFs', 'STDGDCs'], filters = ['F555W','F606W','F775W','F814W','F850LP'], instrument = ['ACSWFC', 'ACSHRC', 'WFC3UV'])
+            
+            print('The installation can set an alias in your .bash_profile or .bashrc file for %s.'%master)
+            print('This would allow you to run %s from anywere in your computer.\n'%master)
+            alias = input('Would you like to create an alias for %s? (y,n): ')
+
+            try:
+               alias = str2bool(alias)
+               if alias:
+                  make_alias(installation_folder, master)
+                  print('You can now run %s from anywere in your computer by typing "%s" in the terminal.\n'%(master, master))
+                  print('Try "%s --help" to learn how to execute it.\n'%master)
+               else:
+                  print('No modification was made to .bash_profile.\n')
+                  print('To run %s, you will have to execute the python script located here:\n'%master)
+                  print(installation_folder+'/python_codes/'+master+'.py')
+            except:
+               print('WARNING: Answer not understood!\n')
+               print('No modification was made to .bash_profile.\n')
+               print('To run %s, you will have to execute the python script located here:\n'%master)
+               print(installation_folder+'/python_codes/'+master+'.py')
+
+            print('\nDONE!\n')
+         except:
+            print('Something went wrong...')
+            print('\nINSTALLATION ABORTED!\n')
    except:
-      pass
-   
-   create_dir(installation_folder)
-
-   clone_repo(os.path.split(installation_folder)[0], repo = 'https://github.com/AndresdPM/%s'%master)
-
-   print('Succesfully cloned the repository at %s\n'%installation_folder)
-
-   # Add the installation folder
-   add_path(installation_folder)
-
-   print('Installing Python dependencies...\n')
-   
-   install_python_dependencies(default_dir+'/python_codes/python_dependencies.txt')
-
-   get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~jayander', libs = ['STDPSFs', 'STDGDCs'], filters = ['F555W','F606W','F775W','F814W','F850LP'], instrument = ['ACSWFC', 'ACSHRC', 'WFC3UV'])
-
-   print('\n\nCompiling Fortran modules...\n')
-
-   compile_fortran(installation_folder)
-
-   alias = input('Would you like to include an alias in the .bash_profile file? (y,n) ')
-
-   try:
-      alias = str2bool(alias)
-   except:
-      print('\nExiting now. No modification was made to .bash_profile \n')
-      sys.exit(1)
-
-   if alias:
-      make_alias(installation_folder)
-
-   print('\nDone!!!')
-
+      print('WARNING: Answer not understood!\n')
+      print('\nINSTALLATION ABORTED!\n')
 
 if __name__ == '__main__':
     installation()
