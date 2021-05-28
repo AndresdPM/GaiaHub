@@ -174,7 +174,7 @@ def make_alias(installation_folder, master):
 
    home = os.environ['HOME']
 
-   intro = "\n# Added by %s installer\n"%master
+   intro = "# Added by %s installer\n"%master
    alias = "alias %s='python %s/python_codes/%s'\n"%(master, installation_folder, master)
 
    if os.path.isfile(home+'/.bash_profile'):
@@ -250,7 +250,6 @@ def installation():
       if installation_folder != current_dir:
          shutil.move(current_dir, installation_folder, copy_function = shutil.copytree)
          os.chdir(installation_folder)
-         shutil.rmtree(current_dir)
 
       # Add the installation folder
       replace_text(installation_folder+"/python_codes/%s.py"%master, "installation_path = '/Users/user'", "installation_path = '%s'"%installation_folder)
@@ -298,7 +297,3 @@ if __name__ == '__main__':
     installation()
     sys.exit(0)
 
-
-"""
-Andres del Pino Molina
-"""
