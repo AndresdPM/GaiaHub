@@ -20,6 +20,8 @@ At the moment, GaiaHub is offered as a python program that runs from your termin
 
 $ ./git clone https://github.com/AndresdPM/GaiaHub.git
 
+$ ./cd GitHub
+
 $ ./python installation.py
 
 Once the installation is completed, the user can run GaiaHub in any terminal as:
