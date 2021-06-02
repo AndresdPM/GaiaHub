@@ -589,7 +589,6 @@ def download_HST_images(data_products_by_obs, path = './'):
    This routine downloads the selected HST images from MAST.
    """
 
-
    images = Observations.download_products(data_products_by_obs, download_dir=path)
 
    return images
