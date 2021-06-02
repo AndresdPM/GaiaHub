@@ -175,7 +175,7 @@ def make_alias(installation_folder, master):
    home = os.environ['HOME']
 
    intro = "# Added by %s installer\n"%master
-   alias = "alias %s='python %s/python_codes/%s'\n"%(master, installation_folder, master)
+   alias = "alias %s='python %s/python_codes/%s.py'\n"%(master.lower(), installation_folder, master)
 
    if os.path.isfile(home+'/.bash_profile'):
       bash_file = home+'/.bash_profile'
@@ -188,10 +188,10 @@ def make_alias(installation_folder, master):
 
    f = open(bash_file, 'r')
    for line in f.readlines():
-      if(re.search('^# Added by %s installer'%master,line)):
-         line = re.sub('^# Added by %s installer\n'%master,'',line)
-      if(re.search('^alias %s='%master,line)):
-         line = re.sub('^alias %s=.+\n'%master,'',line)
+      if(re.search('^# Added by %s installer'%master.lower(), line)):
+         line = re.sub('^# Added by %s installer\n'%master.lower(), '',line)
+      if(re.search('^alias %s='%master.lower(), line)):
+         line = re.sub('^alias %s=.+\n'%master.lower(),'',line)
       blank_file = blank_file + line
    f.close()
 
@@ -221,19 +221,19 @@ def installation():
    This routine will install all possible dependencies and codes.
    """ 
 
-   master = 'StellarTeam'
+   master = 'GaiaHub'
    current_dir = os.getcwd()
 
    help =  '-----------------------------------------------------------------------------------\n'\
-           'Welcome to the installation process of StellarTeam\n'\
+           'Welcome to the installation process of %s\n'\
            '-----------------------------------------------------------------------------------\n'\
            '- %s needs approximatelly 2.5 GB of space in your disk.\n'\
            '- The installation will also attempt to install several python packages.\n'\
            '- If you do not want to modify your current python enviroment \n'\
-           '  we recommend setting a dedicated conda enviroment to install and run %s.\n'\
+           '  we recommend creating a dedicated conda enviroment to install and run %s.\n'\
            '-----------------------------------------------------------------------------------\n'
 
-   print('\n'+help%(master, master)+'\n')
+   print('\n'+help%(master, master, master)+'\n')
 
    try:
       cont = str2bool( input('Do you wish to continue? (y,n): ') )
@@ -284,8 +284,8 @@ def installation():
 
       if alias:
             make_alias(installation_folder, master)
-            print('You can now run %s from anywere in your computer by typing "%s" in the terminal.\n'%(master, master))
-            print('Try "%s --help" to learn how to execute it.\n'%master)
+            print('You can now run %s from anywere in your computer by typing "%s" in the terminal.\n'%(master, master.lower()))
+            print('Try "%s --help" to learn how to execute it.\n'%master.lower())
       else:
             print('No modification was made to .bash_profile.\n')
             print('To run %s, you will have to execute the python script located here:\n'%master)
