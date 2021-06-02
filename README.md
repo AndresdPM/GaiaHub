@@ -19,6 +19,7 @@ GaiaHub includes lots of useful features:
 At the moment, GaiaHub is offered as a python program that runs from your terminal. To install it, please clone this repository and run the installation script located inside the cloned folder. The installation will also attempt to install several python packages. If you do not want to modify your current python enviroment, we recommend creating a dedicated conda enviroment to install and run the program.
 
 $ ./git clone https://github.com/AndresdPM/GaiaHub.git
+
 $ ./python installation.py
 
 Once the installation is completed, the user can run GaiaHub in any terminal as:
