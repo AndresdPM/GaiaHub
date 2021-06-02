@@ -23,7 +23,7 @@ $ ./python installation.py
 
 Once the installation is completed, the user can run GaiaHub in any terminal as:
 
-$ ./GaiaHub --name "Sculptor dSph"
+$ ./GaiaHub --name "NGC 5053"
 
 Please read the help to know more about GaiaHub options.
 
