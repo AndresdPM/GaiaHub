@@ -190,8 +190,8 @@ def make_alias(installation_folder, master):
 
    f = open(bash_file, 'r')
    for line in f.readlines():
-      if(re.search('^# Added by %s installer'%master.lower(), line)):
-         line = re.sub('^# Added by %s installer\n'%master.lower(), '',line)
+      if(re.search('^# Added by %s installer'%master, line)):
+         line = re.sub('^# Added by %s installer\n'%master, '',line)
       if(re.search('^alias %s='%master.lower(), line)):
          line = re.sub('^alias %s=.+\n'%master.lower(),'',line)
       blank_file = blank_file + line
