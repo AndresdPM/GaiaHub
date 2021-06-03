@@ -238,7 +238,7 @@ def installation():
    print('\n'+help%(master, master, master)+'\n')
 
    try:
-      cont = str2bool( input('Do you wish to continue? (y,n): ') )
+      cont = str2bool( input('Do you wish to continue? (y,n): ') or 'y')
    except:
       print('WARNING: Answer not understood!\n')
       print('\nINSTALLATION ABORTED!\n')
@@ -279,7 +279,7 @@ def installation():
       print('This would allow you to run %s from anywere in your computer.\n'%master)
       
       try:
-         alias = str2bool(input('Would you like to create an alias for %s? (y,n): '%master))
+         alias = str2bool(input('Would you like to create an alias for %s? (y,n): '%master) or 'y')
       except:
          print('WARNING: Answer not understood!\n')
          alias = False
