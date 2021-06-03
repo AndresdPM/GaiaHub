@@ -286,7 +286,7 @@ def installation():
             make_alias(installation_folder, master)
             print('You can now run %s from anywere in your computer by typing "%s" in the terminal.\n'%(master, master.lower()))
             print('Try "%s --help" to learn how to execute it.\n'%master.lower())
-            print('(You may need to open a new terminal)')
+            print('(You may need to open a new terminal)\n')
 
       else:
             print('No modification was made to .bash_profile.\n')
