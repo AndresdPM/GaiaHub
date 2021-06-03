@@ -16,13 +16,15 @@ GaiaHub includes lots of useful features:
 
 ## Installation
 
-At the moment, GaiaHub is offered as a python code that runs locally in your machine. To install it, please clone this repository and run the installation script located inside the cloned folder. The installation will check your current python environment and attempt to install or update the required python packages to run GaiaHub. We recommend creating a dedicated conda enviroment to install and run GaiaHub if you do not want to modify your current python environment. More information can be found [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
+At the moment, GaiaHub is offered as a python code that runs locally in your machine. To install it, please clone this repository and run the installation script located inside the cloned folder. The installation will check your current python environment and attempt to install or update the required python packages to run GaiaHub. We recommend creating a dedicated conda enviroment to install and run GaiaHub if you do not want to modify your current python environment. More information can be found [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html). To proceed with the installation, open a terminal in the directory where you would like to install GaiaHub and type
 
 $ ./git clone https://github.com/AndresdPM/GaiaHub.git
 
 $ ./cd GaiaHub
 
 $ ./python install_GaiaHub.py
+
+Please follow the instructions in the screen.
 
 ## Running GaiaHub
 
