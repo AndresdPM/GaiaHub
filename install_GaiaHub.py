@@ -118,10 +118,12 @@ def compile_fortran(installation_folder, raise_exception = False):
       bashCommand = "gfortran %s -o %s"%(input_file, output_file)
       process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       output, error = process.communicate()
-      
-      if not os.path.isfile(output_file) and raise_exception:
+      if not os.path.isfile(output_file):
          print('WARNING: There was a problem compiling %s\n'%input_file)
-         raise Exception()
+         if raise_exception:
+            raise Exception()
+      else:
+         os.chmod(output_file, 0o755)
 
 
 def install_python_dependencies(packages):
