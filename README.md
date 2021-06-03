@@ -12,7 +12,7 @@ GaiaHub includes lots of useful features:
 * Automatic screening out of poorly measured stars.
 * Interactive and automatic selection of member stars.
 * Statistics about the systemic proper motions of the object.
-* Automatic generation of plots.
+* Automatic generation of figures.
 
 ## Installation
 
