@@ -36,7 +36,7 @@ For example, to compute the proper motions of NGC 5053 using only member stars, 
 
 $ ./gaiahub --name "NGC 5053" --use_members
 
-To know more about all GaiaHub options type:
+To know more about all GaiaHub options:
 
-$ ./GaiaHub --help
+$ ./gaiaHub --help
 
