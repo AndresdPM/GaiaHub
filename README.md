@@ -22,15 +22,19 @@ $ ./git clone https://github.com/AndresdPM/GaiaHub.git
 
 $ ./cd GaiaHub
 
-$ ./python installation.py
+$ ./python install_GaiaHub.py
 
 ## Running GaiaHub
 
-Once the installation is completed, the user can run GaiaHub in from the terminal as:
+Once the installation is completed, the user can run GaiaHub from the terminal as:
 
-$ ./GaiaHub --name "NGC 5053"
+$ ./gaiahub [options]
 
-Please read the help to know more about GaiaHub options.
+For example, to compute the proper motions of NGC 5053 using only member stars, GaiaHub should be called as:
+
+$ ./gaiahub --name "NGC 5053" --use_members
+
+To know more about all GaiaHub options type:
 
 $ ./GaiaHub --help
 
