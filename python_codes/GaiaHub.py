@@ -522,7 +522,7 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
       with plt.rc_context(rc={'interactive': False}):
          plt.gcf().show()
 
-   obs_table[''] = ['(%i)'%(ii+1) for ii in np.arange(len(obs_table))]
+   obs_table['field_id'] = ['(%i)'%(ii+1) for ii in np.arange(len(obs_table))]
    
    return Gaia_table, obs_table
 
@@ -1060,7 +1060,7 @@ def xym2pm_Gaia_multiproc(args):
    return xym2pm_Gaia(*args)
 
 
-def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
+def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
    """
    This routine will launch xym2pm_Gaia Fortran routine in parallel or serial using the correct arguments.
    """
@@ -1158,7 +1158,7 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
 
       # Membership selection
       if only_use_members:
-         if (iteration == 0) and (no_plots == False) and (preselect_cmd == True):
+         if (iteration == 0) and (no_plots == False) and (preselect_cmd == True) and (quiet == False):
             # Select stars in theCMD
             hst_filters = [col for col in lnks_averaged.columns if ('F' in col) & ('error' not in col) & ('std' not in col) & ('_mean' not in col)]
             hst_filters.sort()
@@ -1894,20 +1894,30 @@ def get_object_properties(args):
 
       except:
          object_name = args.name
-         if args.ra is None:
+         if ((args.ra is None) or (args.dec is None)) and (args.quiet is False):
             print('\n')
-            args.ra = float(input('R.A. not defined, please enter R.A. in degrees: '))
-         if args.dec is None:
-            args.dec = float(input('Dec not defined, please enter Dec in degrees: '))
+            try:
+               if (args.ra is None):
+                  args.ra = float(input('R.A. not defined, please enter R.A. in degrees: '))
+               if args.dec is None:
+                  args.dec = float(input('Dec not defined, please enter Dec in degrees: '))
+            except:
+               print('No valid input. Float number required.')
+               print('\nExiting now.\n')
+               sys.exit(1)
+
+         elif args.quiet is True:
+            print('GaiaHub could not find the object coordinates. Please check that the name of the object is written correctly. You can also run GaiaHub deffining explictly the coordinates using the "--ra" and "--dec" options.')
+            sys.exit(1)
+
    else:
       object_name = args.name
 
-   if args.search_radius is None:
-      try:
-         print('\n')
-         args.search_radius = float(input('Search radius not defined, please enter the search radius in degrees (Press enter to adopt the default value of 0.25 deg): '))
-      except:
-         args.search_radius = 0.25
+   if (args.search_radius is None) and (args.quiet is False):
+      print('\n')
+      args.search_radius = float(input('Search radius not defined, please enter the search radius in degrees (Press enter to adopt the default value of 0.25 deg): ') or 0.25)
+   elif args.quiet is True:
+      args.search_radius = 0.25
 
    if (args.search_height is None):
       try:
@@ -1921,7 +1931,6 @@ def get_object_properties(args):
          args.search_width = 1.0
 
    setattr(args, 'area', args.search_height * args.search_width * np.abs(np.cos(np.deg2rad(args.dec))))
-   setattr(args, 'download_radius', args.search_radius)
 
    if args.no_error_weighted:
       args.use_mean = 'mean'
@@ -1992,8 +2001,18 @@ def main(argv):
    """
    Inputs
    """
+   
+   examples = '''Examples:
+   
+   gaiahub --name "Sculptor dSph"
 
-   parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, usage='%(prog)s [options]', description="This script derives proper motions (PM) combining HST and Gaia data.")
+   gaiahub --name "NGC 5053" --use_members --use_sat --quiet
+   
+   gaiahub --ra 201.405 --dec -47.667 --search_radius 0.1 --hst_filters "F814W" "F606W" --use_members --use_sat --preselect_cmd
+
+   '''
+
+   parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, usage='%(prog)s [options]', description='GaiaHub computes proper motions (PM) combining HST and Gaia data.', epilog=examples)
    
    # Search options
    parser.add_argument('--name', type=str, default = 'Output', help='Name for the Output table.')
@@ -2023,6 +2042,7 @@ def main(argv):
    parser.add_argument('--hst_integration_time_max', type=float, default = 2000, help='Required maximum average integration time for a set of HST images. This quantity is a limit on the average exposure time of an entire set of observations. Therefore, longer and shorter exposures may be available in an specific data set. Expossures with less that 500 seconds of integration time are preferred.')
    parser.add_argument('--time_baseline', type=float, default = 2190, help='Minimum time baseline with respect to Gaia EDR3 in days. Default 2190.')
    parser.add_argument('--project', type=str, nargs='+', default = ['HST'], help='Processing project. E.g. HST, HLA, EUVE, hlsp_legus. Default HST. They can be added as a list, e.g. "HST", "HLA".')
+   parser.add_argument('--field_id', type=str, nargs='+', default = None, help='Specify the Ids of the fields to download. This is an internal id created by GaiaHub (field_id). The default value, "y", will download all the available HST observations fulfiling the required conditions. The user can also especify "n" for none, or the specific ids separated by spaces.')
 
    # HST-Gaia match options
    parser.add_argument('--use_members', action='store_true', help='Whether to use only member stars for the epochs alignment or to use all available stars.')
@@ -2045,7 +2065,12 @@ def main(argv):
    parser.add_argument('--no_plots', action='store_true', help='This flag prevents the code from making any plot. Useful when using distributed computing or in situations when python is not able to open an plotting device.')
    parser.add_argument('--no_error_weighted', action='store_true', help = 'The program will use non-weighted arithmetic mean to compute the PMs. By default, the code will try to make use of the errors obtained for each individual HST image in order to compute a final error-weighted mean for the PMs. This flag will force the code to use a normal arithmetic mean instead. Useful if you think all HST images should have exactly the same weight.')
    parser.add_argument('--remove_previous_files', action='store_true', help='Remove previous intermediate files.')
-   parser.add_argument('--verbose', type=str2bool, default=True, help='Controls the program verbosity. Default True.')
+   parser.add_argument('--verbose', action='store_true', help='It controls the program verbosity. Default True.')
+   parser.add_argument('--quiet', action='store_true', help='This flag deactivate the interactivity of GaiaHub. When used, GaiaHub will use all the default values without asking the user. This flag unables the "--preselect_cmd" option.')
+
+   if len(argv)==0:
+      parser.print_help(sys.stderr)
+      sys.exit(1)
 
    args = parser.parse_args(argv)
    args = get_object_properties(args)
@@ -2128,12 +2153,20 @@ def main(argv):
       Ask whether the user wish to download the available HST images 
       """
 
-      print('Would you like to use the following HST observations?\n')
-      print(obs_table.loc[:, ['obsid', 'filters', 'n_exp', 'i_exptime', 'obs_time', 't_baseline', 'gaia_stars_per_obs', 'proposal_id', 's_ra', 's_dec', '']].to_string(index=False), '\n')
+      print(obs_table.loc[:, ['obsid', 'filters', 'n_exp', 'i_exptime', 'obs_time', 't_baseline', 'gaia_stars_per_obs', 'proposal_id', 's_ra', 's_dec', 'field_id']].to_string(index=False), '\n')
 
-      print("Type 'y' for all observations, 'n' for none. Type the number within parentheses at the right if you wish to use that specific set of observations. You can enter several numbers separated by space. \n")
-      HST_obs_to_use = input('Please type your answer and press enter: ')
-      print('\n')
+      if (args.quiet is True) and (args.field_id is None):
+         print('GaiaHub will use the above sets of observations.\n')
+         HST_obs_to_use = 'y'
+      elif args.field_id is not None:
+         print('GaiaHub will use the observations sets %s.'%(' '.join(str(p) for p in args.field_id) ))
+         #HST_obs_to_use = [str(p) for p in args.field_id]
+         HST_obs_to_use = ' '.join([str(p) for p in args.field_id])
+      else:
+         print('Would you like to use above HST observations?\n')
+         print("Type 'y' for all observations, 'n' for none. Type the id within parentheses at the right (field_id) if you wish to use that specific set of observations. You can enter several ids separated by space. \n")
+         HST_obs_to_use = input('Please type your answer and press enter: ')
+         print('\n')
 
       try:
          HST_obs_to_use = str2bool(HST_obs_to_use)
@@ -2165,7 +2198,7 @@ def main(argv):
       """
       Call xym2pm_Gaia
       """
-      Gaia_table_hst, lnks = launch_xym2pm_Gaia(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, min_stars_alignment = args.min_stars_alignment, use_mean = args.use_mean, no_plots = args.no_plots, verbose = args.verbose, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'Match')
+      Gaia_table_hst, lnks = launch_xym2pm_Gaia(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, min_stars_alignment = args.min_stars_alignment, use_mean = args.use_mean, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'Match')
 
       """
       Save Gaia and HST tables
