@@ -46,7 +46,6 @@ def gaiahub(argv):
    # Gaia options
    parser.add_argument('--source_table', type = str, default = 'gaiaedr3.gaia_source', help='Gaia source table. Default is gaiaedr3.gaia_source.')
    parser.add_argument('--save_individual_queries', action='store_true', help='If True, the code will save the individual queries.')
-   parser.add_argument('--clean_data', action='store_true', help = 'Screen out bad measurements based on Gaia EDR3 quality flags.')
    parser.add_argument('--sigma_flux_excess_factor', type=float, default=3., help='Sigma used for clipping in flux_excess_factor. Default is 3.')
    parser.add_argument('--only_5p_solutions', action='store_true', help='If True, only 5p solution stars will be considered as "good" sources.')
    parser.add_argument('--date_second_epoch', type=int, nargs='+', default= [5, 28, 2017], help='Second epoch adquisition date. Default is Gaia EDR3 (05-28-2017).')
@@ -64,6 +63,7 @@ def gaiahub(argv):
    parser.add_argument('--field_id', type=str, nargs='+', default = None, help='Specify the Ids of the fields to download. This is an internal id created by GaiaHub (field_id). The default value, "y", will download all the available HST observations fulfiling the required conditions. The user can also especify "n" for none, or the specific ids separated by spaces.')
 
    # HST-Gaia match options
+   parser.add_argument('--use_all_gaia', action='store_true', help = 'Force GaiaHub to use all the Gaia stars to make the alignment with HST. Otherwise, GaiaHub will use only good measurements based on Gaia EDR3 quality flags. Useful when not enough good stars are available.')
    parser.add_argument('--use_members', action='store_true', help='Whether to use only member stars for the epochs alignment or to use all available stars.')
    parser.add_argument('--preselect_cmd', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the color-magnitude diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contaminanation from non-member stars.')
    parser.add_argument('--preselect_pm', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the vector-point diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contaminanation from non-member stars, or when there are a significant amount of contaminants.')
@@ -144,9 +144,6 @@ def gaiahub(argv):
 
       Gaia_table.to_csv(args.Gaia_clean_table_filename)
 
-   if args.clean_data:
-      Gaia_table = Gaia_table[Gaia_table.clean_label == True]
-
    """
    The script tries to load an existing HST table, otherwise it will download it from the MAST archive.
    """
@@ -158,7 +155,7 @@ def gaiahub(argv):
    """
    Plot results and find Gaia stars within HST fields
    """
-   Gaia_table, obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
+   obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, use_all_gaia = args.use_all_gaia,  min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
 
    if len(obs_table) > 0:
 
@@ -212,7 +209,7 @@ def gaiahub(argv):
       """
       Call xym2pm_Gaia
       """
-      Gaia_table_hst, lnks = gh.launch_xym2pm_Gaia(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, min_stars_alignment = args.min_stars_alignment, use_mean = args.use_mean, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'Match')
+      Gaia_table_hst, lnks = gh.launch_xym2pm_Gaia(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_all_gaia = args.use_all_gaia, min_stars_alignment = args.min_stars_alignment, use_mean = args.use_mean, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'Match')
 
       """
       Save Gaia and HST tables
