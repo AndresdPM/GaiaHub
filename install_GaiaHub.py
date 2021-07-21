@@ -105,7 +105,7 @@ def download_files(files_urls, output_files):
          f.write(r.content)
 
 
-def compile_fortran(installation_folder, raise_exception = False):
+def compile_fortran(compiler, installation_folder, raise_exception = False):
    """
    This routine will compile Fortran routines
    """ 
@@ -114,8 +114,12 @@ def compile_fortran(installation_folder, raise_exception = False):
    f_modules = ['%s%s'%(path, file) for file in os.listdir(path) if file.endswith('F')]
    
    for input_file in f_modules:
+      if input_file.endswith('FF'):
+         os.rename(input_file, input_file.split('.')[0]+'.F')
+         input_file = input_file.split('.')[0]+'.F'
+
       output_file = input_file.split('.')[0]+'.e'
-      bashCommand = "gfortran %s -o %s"%(input_file, output_file)
+      bashCommand = "%s %s -o %s"%(compiler, input_file, output_file)
       process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       output, error = process.communicate()
       if not os.path.isfile(output_file):
@@ -176,9 +180,7 @@ def make_alias(installation_folder, master):
 
    home = os.environ['HOME']
 
-   intro = "# Added by %s installer\n"%master
-   func = '%s() {python "%s/python_codes/%s.py" "$@"}\n'%(master.lower(), installation_folder, master)
-   exp_func = 'export -f %s'%master.lower()
+   func = '\n# Added by %s installer\n%s() {\npython "%s/python_codes/%s.py" "$@"\n}\nexport -f %s\n'''%(master, master.lower(), installation_folder, master, master.lower())
 
    if os.path.isfile(home+'/.bash_profile'):
       bash_file = home+'/.bash_profile'
@@ -189,25 +191,13 @@ def make_alias(installation_folder, master):
 
    blank_file = ''
 
-   f = open(bash_file, 'r')
-   for line in f.readlines():
-      if(re.search('^# Added by %s installer'%master.lower(), line)):
-         line = re.sub('^# Added by %s installer\n'%master.lower(), '',line)
-      if(re.search('^%s() {python "%s/python_codes/%s.py"'%(master.lower(), installation_folder, master), line)):
-         line = re.sub('^%s() {python "%s/python_codes/%s.py"'%(master.lower(), installation_folder, master),'',line)
-      if(re.search('^export -f %s'%master.lower(), line)):
-         line = re.sub('^export -f %s'%master.lower(),'',line)
-      blank_file = blank_file + line
-   f.close()
-
-   #Write the new bashrc
-   f = open(bash_file, 'w')
-   f.write(blank_file)
-   f.close()
-
-   f = open(bash_file, "a")
-   f.write(intro+func+exp_func)
-   f.close()
+   with open(bash_file, 'r') as file:
+      data = file.read()
+   
+   if not func in data:
+      f = open(bash_file, "a")
+      f.write(func)
+      f.close()
 
 
 def move_files(source_dir, target_dir):
@@ -258,15 +248,21 @@ def installation():
          os.chdir(installation_folder)
 
       # Add the installation folder
-      replace_text(installation_folder+"/python_codes/%s.py"%master, "installation_path = '/Users/user'", "installation_path = '%s'"%installation_folder)
+      replace_text(installation_folder+"/python_codes/%s.py"%master, "installation_path = ''", "installation_path = '%s'"%installation_folder)
 
       print('Downloading hst1pass...\n')
       get_hst1pass(installation_folder, repo = 'https://www.stsci.edu/~jayander')
 
+
+
+      print('The installation needs to compile two Fortran routines.')
+      print('By default, the command "gfortran" will be executed.')
+      compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler in case you do not have gfortran in your computer.\n') or "gfortran"
+
       print('\nCompiling Fortran modules...\n')
 
       try:
-         compile_fortran(installation_folder, raise_exception = False)
+         compile_fortran(compiler, installation_folder, raise_exception = False)
       except:
          print('WARNING: Something went wrong when compiling the Fortran libraries.')
          print('Be sure to have installed GNU Fortran (GCC) (Tested in version 8.2.0).')
