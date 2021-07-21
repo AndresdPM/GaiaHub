@@ -299,7 +299,7 @@ def pre_clean_data(phot_g_mean_mag, corrected_flux_excess_factor, ruwe, ipd_gof_
    
    labels_astrometric = clean_astrometry(ruwe, ipd_gof_harmonic_amplitude, visibility_periods_used, astrometric_excess_noise_sig, astrometric_params_solved, use_5p = use_5p)
    
-   return labels_photometric & labels_astrometric
+   return labels_astrometric & labels_photometric
 
 
 def remove_jobs():
@@ -449,13 +449,14 @@ def incremental_query(query, area, min_gmag = 10.0, max_gmag = 19.5, n_processes
    return result_gaia, queries
 
 
-def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plots = False, name = 'test.png'):
+def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min_stars_alignment = 5, no_plots = False, name = 'test.png'):
    """
    This routine plots the fields and select Gaia stars within them.
    """
 
    from matplotlib.patches import (Polygon, Patch)
    from matplotlib.collections import PatchCollection
+   from matplotlib.lines import Line2D
    from shapely.geometry.polygon import Polygon as shap_polygon
    from shapely.geometry import Point
 
@@ -486,10 +487,16 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
    if no_plots == False:
       fig, ax = plt.subplots(1,1, figsize = (5., 4.75))
 
-   Gaia_table['parent_obsid'] = ""
+   if use_only_good_gaia:
+      Gaia_table_count = Gaia_table[Gaia_table.clean_label == True]
+   else:
+      Gaia_table_count = Gaia_table
+
    patches = []
    fields_data = []
-
+   bad_patches = []
+   bad_fields_data = []
+   
    # We rearrange obs_table for legibility
    obs_table = obs_table.sort_values(by =['s_ra', 's_dec', 'proposal_id', 'obsid'], ascending = False).reset_index(drop=True)
 
@@ -521,7 +528,7 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
             footprint =  shap_polygon(tuples_list)
 
             star_counts = 0
-            for idx, ra, dec in zip(Gaia_table.index, Gaia_table.ra, Gaia_table.dec):
+            for idx, ra, dec in zip(Gaia_table_count.index, Gaia_table_count.ra, Gaia_table_count.dec):
                if Point(ra, dec).within(footprint):
                   idx_Gaia_in_field.append(idx)
                   star_counts += 1
@@ -531,12 +538,13 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
             if star_counts >= min_stars_alignment:
                patches.append(polygon)
                fields_data.append([index_obs, round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), fc, sum(gaia_stars_per_poly)])
-
-      Gaia_table.loc[idx_Gaia_in_field, 'parent_obsid'] = Gaia_table.loc[idx_Gaia_in_field, 'parent_obsid'].astype(str) + '%s '%obsid
-
+            else:
+               bad_patches.append(polygon)
+               bad_fields_data.append([round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), fc])
    print('\n')
 
    fields_data = pd.DataFrame(data = fields_data, columns=['Index_obs', 'ra', 'dec', 'filter', 'filter_color', 'download_color', 'gaia_stars_per_obs'])
+   bad_fields_data = pd.DataFrame(data = bad_fields_data, columns=['ra', 'dec', 'filter', 'filter_color', 'download_color'])
 
    # Select only the observations with enough Gaia stars
    try:
@@ -554,11 +562,20 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
          ra_lims = [Gaia_table.ra.max(), Gaia_table.ra.min()]
          dec_lims = [Gaia_table.dec.min(), Gaia_table.dec.max()]
 
-      pe = PatchCollection(patches, alpha = 0.1, ec = 'None', fc = fields_data.download_color, antialiased = True, lw = 1, zorder = 1)
-      pf = PatchCollection(patches, alpha = 1, ec = fields_data.filter_color, fc = 'None', antialiased = True, lw = 1, zorder = 2)
+      bpe = PatchCollection(bad_patches, alpha = 0.1, ec = 'None', fc = bad_fields_data.download_color, antialiased = True, lw = 1, zorder = 2)
+      bpf = PatchCollection(bad_patches, alpha = 1, ec = bad_fields_data.filter_color, fc = 'None', antialiased = True, lw = 1, zorder = 3, hatch='/////')
+
+      ax.add_collection(bpe)
+      ax.add_collection(bpf)
+
+      pe = PatchCollection(patches, alpha = 0.1, ec = 'None', fc = fields_data.download_color, antialiased = True, lw = 1, zorder = 2)
+      pf = PatchCollection(patches, alpha = 1, ec = fields_data.filter_color, fc = 'None', antialiased = True, lw = 1, zorder = 3)
+
       ax.add_collection(pe)
       ax.add_collection(pf)
-      ax.plot(Gaia_table.ra, Gaia_table.dec, '.', color = '0.4', ms = 0.75, zorder = 0)
+
+      ax.plot(Gaia_table.ra[~Gaia_table.clean_label], Gaia_table.dec[~Gaia_table.clean_label], '.', color = '0.6', ms = 0.75, zorder = 0)
+      ax.plot(Gaia_table.ra[Gaia_table.clean_label], Gaia_table.dec[Gaia_table.clean_label], '.', color = '0.2', ms = 0.75, zorder = 1)
 
       for coo, obs_id in fields_data.groupby(['ra','dec']).apply(lambda x: x.index.tolist()).iteritems():
          if len(obs_id) > 1:
@@ -574,19 +591,22 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
 
       ax.set_xlabel(r'RA [$^\circ$]')
       ax.set_ylabel(r'Dec [$^\circ$]')
-      
+
+      legend_elements = [Line2D([0], [0], marker='.', color='None', markeredgecolor='0.2', markerfacecolor='0.2', label = 'Good stars'), Line2D([0], [0], marker='.', color='None', markeredgecolor='0.6', markerfacecolor='0.6', label = 'Bad stars')]
+
       if [0,1,0,0.2] in fields_data.download_color.tolist():
-         legend_elements = [Patch(facecolor=[0,1,0,0.2], edgecolor='0.85',
+         legend_elements.extend([Patch(facecolor=[0,1,0,0.2], edgecolor='0.4',
                                  label='Previously downloaded'),
-                           Patch(facecolor=[1,1,1,0.2], edgecolor='0.85',
-                                 label='Not yet downloaded')]
-      else:
-         legend_elements = []
+                           Patch(facecolor=[1,1,1,0.2], edgecolor='0.4',
+                                 label='Not yet downloaded')])
+      if len(bad_patches) > 0:
+         legend_elements.append(Patch(facecolor=[1,1,1,0.2], edgecolor='0.4', hatch='/////',
+                                 label='Not enough good stars'))
 
       for filter, filter_color in fields_data.groupby(['filter'])['filter_color'].first().iteritems():
          legend_elements.append(Patch(facecolor='1', edgecolor=filter_color, label=filter))
 
-      ax.legend(handles=legend_elements)
+      ax.legend(handles=legend_elements, prop={'size': 7})
 
       plt.tight_layout()
 
@@ -597,7 +617,7 @@ def plot_fields(Gaia_table, obs_table, HST_path, min_stars_alignment = 5, no_plo
 
    obs_table['field_id'] = ['(%i)'%(ii+1) for ii in np.arange(len(obs_table))]
    
-   return Gaia_table, obs_table
+   return obs_table
 
 
 def search_mast(ra, dec, search_width = 0.25, search_height = 0.25, filters = ['any'], project = ['HST'], t_exptime_min = 50, t_exptime_max = 2500, date_second_epoch = 57531.0, time_baseline = 3650):
@@ -1105,11 +1125,11 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
             f.close()
 
          # Positional and mag error is know to be proportional to the QFIT parameter.
-         eradec_hst = lnk.q_hst
+         eradec_hst = lnk.q_hst.copy()
          # Assign the maximum (worst) QFIT parameter to saturated stars.
-         eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.max()})
-         # 0.5 seems reasonable, although this may be tuned through an empirical function.
-         eradec_hst *= pixel_scale_mas * 0.5
+         eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.max()}).copy()
+         # 0.75 seems reasonable, although this may be tuned through an empirical function.
+         eradec_hst *= pixel_scale_mas * 0.75
 
          lnk['relative_hst_gaia_pmra'] = -(lnk.x_gaia - lnk.xhst_gaia) * pixel_scale_mas / t_baseline
          lnk['relative_hst_gaia_pmdec'] = (lnk.y_gaia - lnk.yhst_gaia) * pixel_scale_mas / t_baseline
@@ -1152,7 +1172,7 @@ def xym2pm_Gaia_multiproc(args):
    return xym2pm_Gaia(*args)
 
 
-def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
+def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
    """
    This routine will launch xym2pm_Gaia Fortran routine in parallel or serial using the correct arguments.
    """
@@ -1166,8 +1186,12 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
       verbose = False
    else:
       mat_plots = ~no_plots
-   
-   Gaia_HST_table['use_for_alignment'] = True
+
+   if use_only_good_gaia:
+      Gaia_HST_table['use_for_alignment'] = Gaia_HST_table.clean_label.values
+   else:
+      Gaia_HST_table['use_for_alignment'] = True
+
    convergence = False
    iteration = 0
 
@@ -1260,47 +1284,45 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
                hst_filters = [col for col in lnks_averaged.columns if ('F' in col) & ('error' not in col) & ('std' not in col) & ('_mean' not in col)]
                hst_filters.sort()
 
-               min_HST_HST_stars = 0.9*len(Gaia_HST_table.loc[:, ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean]].dropna())
+               min_HST_HST_stars = 0.9*len(Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean]].dropna())
                
                cmd_sel = False
                if len(hst_filters) >= 2:
                   for f1, f2 in itertools.combinations(hst_filters, 2):
-                     if (len((Gaia_HST_table[f1] - Gaia_HST_table[f2]).dropna()) >=  min_HST_HST_stars):
-                        Gaia_HST_table['clustering_cmd'] =  manual_select_from_cmd((Gaia_HST_table[hst_filters[0]]-Gaia_HST_table[hst_filters[1]]).rename('%s - %s'%(hst_filters[0], hst_filters[1])), Gaia_HST_table[hst_filters[1]])
+                     if (len((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, f1] - Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, f2]).dropna()) >=  min_HST_HST_stars):
+                        Gaia_HST_table[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] =  manual_select_from_cmd((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment,hst_filters[0]]-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]]).rename('%s - %s'%(hst_filters[0], hst_filters[1])), Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]])
                         cmd_sel = True
                         break
 
                if (len(hst_filters) == 1) or not cmd_sel:
                   for cmd_filter in hst_filters:
                      if int(re.findall(r'\d+', cmd_filter)[0]) <= 606:
-                        HST_Gaia_color = (Gaia_HST_table[cmd_filter]-Gaia_HST_table['gmag']).rename('%s - Gmag'%cmd_filter)
+                        HST_Gaia_color = (Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, cmd_filter]-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag']).rename('%s - Gmag'%cmd_filter)
                      else:
-                        HST_Gaia_color = (Gaia_HST_table['gmag']-Gaia_HST_table[cmd_filter]).rename('Gmag - %s'%cmd_filter)
+                        HST_Gaia_color = (Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag']-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, cmd_filter]).rename('Gmag - %s'%cmd_filter)
 
-                     Gaia_HST_table['%s_clustering_data_cmd'%cmd_filter] =  manual_select_from_cmd(HST_Gaia_color, Gaia_HST_table['gmag'].rename('Gmag'))
+                     Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, '%s_clustering_data_cmd'%cmd_filter] =  manual_select_from_cmd(HST_Gaia_color, Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag'].rename('Gmag'))
 
                   cmd_clustering_filters = [col for col in Gaia_HST_table.columns if '_clustering_data_cmd' in col]
-                  Gaia_HST_table['clustering_cmd'] = (Gaia_HST_table.loc[:, cmd_clustering_filters] == True).any(axis = 1)
+                  Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] = (Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, cmd_clustering_filters] == True).any(axis = 1)
                   Gaia_HST_table.drop(columns = cmd_clustering_filters, inplace = True)
          else:
-            Gaia_HST_table['clustering_cmd'] = True
+            Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] = True
 
-         
+
          if (preselect_pm == True) and (no_plots == False) and (quiet == False):
             if (iteration == 0):
-               Gaia_HST_table['clustering_pm'] =  manual_select_from_pm(Gaia_HST_table.loc[:, 'relative_hst_gaia_pmra_%s'%use_mean], Gaia_HST_table.loc[:, 'relative_hst_gaia_pmdec_%s'%use_mean])
+               Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_pm'] =  manual_select_from_pm(Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'relative_hst_gaia_pmra_%s'%use_mean], Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'relative_hst_gaia_pmdec_%s'%use_mean])
                gauss_center = Gaia_HST_table.loc[Gaia_HST_table.clustering_pm == True, ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean]].mean().values
          else:
-            Gaia_HST_table['clustering_pm'] = True
+            Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_pm'] = True
             gauss_center = [0,0]
 
          Gaia_HST_table['clustering_data'] = Gaia_HST_table.clustering_cmd & Gaia_HST_table.clustering_pm
 
          # Select stars in the PM space asuming spherical covariance (Reasonable for dSphs and globular clusters) 
          pm_clustering = pm_cleaning_GMM_recursive(Gaia_HST_table.copy(), ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean], data_0 = gauss_center, n_components = n_components, covariance_type = 'spherical', clipping_prob = clipping_prob, no_plots = no_plots, plot_name = '%s_PM_sel_%i'%(plot_name, iteration))
-         new_use_for_alignment = pm_clustering & Gaia_HST_table.clustering_data
-
-         Gaia_HST_table['use_for_alignment'] = new_use_for_alignment
+         Gaia_HST_table['use_for_alignment'] = pm_clustering & Gaia_HST_table.clustering_data
 
       elif not rewind_stars:
          convergence = True
