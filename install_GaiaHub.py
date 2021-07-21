@@ -177,7 +177,8 @@ def make_alias(installation_folder, master):
    home = os.environ['HOME']
 
    intro = "# Added by %s installer\n"%master
-   alias = "alias %s='python %s/python_codes/%s.py'\n"%(master.lower(), installation_folder, master)
+   func = '%s() {python "%s/python_codes/%s.py" "$@"}\n'%(master.lower(), installation_folder, master)
+   exp_func = 'export -f %s'%master.lower()
 
    if os.path.isfile(home+'/.bash_profile'):
       bash_file = home+'/.bash_profile'
@@ -190,10 +191,12 @@ def make_alias(installation_folder, master):
 
    f = open(bash_file, 'r')
    for line in f.readlines():
-      if(re.search('^# Added by %s installer'%master, line)):
-         line = re.sub('^# Added by %s installer\n'%master, '',line)
-      if(re.search('^alias %s='%master.lower(), line)):
-         line = re.sub('^alias %s=.+\n'%master.lower(),'',line)
+      if(re.search('^# Added by %s installer'%master.lower(), line)):
+         line = re.sub('^# Added by %s installer\n'%master.lower(), '',line)
+      if(re.search('^%s() {python "%s/python_codes/%s.py"'%(master.lower(), installation_folder, master), line)):
+         line = re.sub('^%s() {python "%s/python_codes/%s.py"'%(master.lower(), installation_folder, master),'',line)
+      if(re.search('^export -f %s'%master.lower(), line)):
+         line = re.sub('^export -f %s'%master.lower(),'',line)
       blank_file = blank_file + line
    f.close()
 
@@ -203,7 +206,7 @@ def make_alias(installation_folder, master):
    f.close()
 
    f = open(bash_file, "a")
-   f.write(intro+alias)
+   f.write(intro+func+exp_func)
    f.close()
 
 
@@ -239,8 +242,9 @@ def installation():
 
    try:
       cont = str2bool( input('Do you wish to continue? (y,n): ') or 'y')
+      print('\n')
    except:
-      print('WARNING: Answer not understood!\n')
+      print('\nWARNING: Answer not understood!\n')
       print('\nINSTALLATION ABORTED!\n')
       sys.exit(1)
 
@@ -300,4 +304,3 @@ def installation():
 if __name__ == '__main__':
     installation()
     sys.exit(0)
-
