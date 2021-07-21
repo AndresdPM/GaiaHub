@@ -257,15 +257,15 @@ def installation():
 
       print('The installation needs to compile two Fortran routines.')
       print('By default, the command "gfortran" will be executed.')
-      compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler in case you do not have gfortran in your computer.\n') or "gfortran"
+      compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler if you wish.\n') or "gfortran"
 
       print('\nCompiling Fortran modules...\n')
 
       try:
          compile_fortran(compiler, installation_folder, raise_exception = False)
       except:
-         print('WARNING: Something went wrong when compiling the Fortran libraries.')
-         print('Be sure to have installed GNU Fortran (GCC) (Tested in version 8.2.0).')
+         print('WARNING: Something went wrong when compiling the Fortran libraries using "%s".'%compiler)
+         print('This installation was tested on GNU Fortran (GCC) (version 8.2.0).')
          print('Visit "https://gcc.gnu.org/wiki/GFortranBinaries" for more information.')
          print('\nINSTALLATION ABORTED!\n')
          sys.exit(1)
