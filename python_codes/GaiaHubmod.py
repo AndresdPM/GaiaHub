@@ -195,8 +195,9 @@ def manual_select_from_pm(pmra, pmdec):
    pts = ax.scatter(pmra, pmdec, c = '0.2', s=1)
 
    try:
-      ax.set_xlim(np.nanmedian(pmra)-3*np.nanstd(pmra), np.nanmedian(pmra)+3*np.nanstd(pmra))
-      ax.set_ylim(np.nanmedian(pmdec)-3*np.nanstd(pmdec), np.nanmedian(pmdec)+3*np.nanstd(pmdec))
+      margin = 2*(np.nanstd(pmra)+np.nanstd(pmdec))/2
+      ax.set_xlim(np.nanmedian(pmra)-margin, np.nanmedian(pmra)+margin)
+      ax.set_ylim(np.nanmedian(pmdec)-margin, np.nanmedian(pmdec)+margin)
    except:
       pass
 
@@ -454,6 +455,7 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
    This routine plots the fields and select Gaia stars within them.
    """
 
+   from matplotlib.patheffects import withStroke
    from matplotlib.patches import (Polygon, Patch)
    from matplotlib.collections import PatchCollection
    from matplotlib.lines import Line2D
@@ -500,7 +502,7 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
    # We rearrange obs_table for legibility
    obs_table = obs_table.sort_values(by =['s_ra', 's_dec', 'proposal_id', 'obsid'], ascending = False).reset_index(drop=True)
 
-   for index_obs, (s_ra, s_dec, footprint_str, obsid, filter, obs_id) in obs_table.loc[:, ['s_ra', 's_dec', 's_region', 'obsid', 'filters', 'obs_id']].iterrows():
+   for index_obs, (s_ra, s_dec, footprint_str, obsid, filter, t_bl, obs_id) in obs_table.loc[:, ['s_ra', 's_dec', 's_region', 'obsid', 'filters', 't_baseline', 'obs_id']].iterrows():
       cli_progress_test(index_obs+1, len(obs_table))
 
       idx_Gaia_in_field = []
@@ -537,13 +539,13 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
             
             if star_counts >= min_stars_alignment:
                patches.append(polygon)
-               fields_data.append([index_obs, round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), fc, sum(gaia_stars_per_poly)])
+               fields_data.append([index_obs, round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), t_bl, fc, sum(gaia_stars_per_poly)])
             else:
                bad_patches.append(polygon)
                bad_fields_data.append([round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), fc])
    print('\n')
 
-   fields_data = pd.DataFrame(data = fields_data, columns=['Index_obs', 'ra', 'dec', 'filter', 'filter_color', 'download_color', 'gaia_stars_per_obs'])
+   fields_data = pd.DataFrame(data = fields_data, columns=['Index_obs', 'ra', 'dec', 'filter', 'filter_color', 't_baseline', 'download_color', 'gaia_stars_per_obs'])
    bad_fields_data = pd.DataFrame(data = bad_fields_data, columns=['ra', 'dec', 'filter', 'filter_color', 'download_color'])
 
    # Select only the observations with enough Gaia stars
@@ -582,8 +584,15 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
             obs_id = '%i-%i'%(min(obs_id)+1, max(obs_id)+1)
          else:
             obs_id = obs_id[0]+1
-
          ax.annotate(obs_id, xy=(coo[0], coo[1]), xycoords='data', color = 'k', zorder = 3)
+      
+      for ii, (t_bl, obs_id) in enumerate(fields_data.groupby(['t_baseline']).apply(lambda x: x.index.tolist()).iteritems()):
+         if len(obs_id) > 1:
+            obs_id = '%i-%i, %.2f years'%(min(obs_id)+1, max(obs_id)+1, t_bl)
+         else:
+            obs_id = '%i, %.2f years'%(obs_id[0]+1, t_bl)
+         t = ax.annotate(obs_id, xy=(0.05, 0.95-0.05*ii), xycoords='axes fraction', fontsize = 9, color = 'k', zorder = 3)
+         t.set_path_effects([withStroke(foreground="w", linewidth=3)])
 
       ax.set_xlim(ra_lims[0], ra_lims[1])
       ax.set_ylim(dec_lims[0], dec_lims[1])
@@ -616,7 +625,7 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
          plt.gcf().show()
 
    obs_table['field_id'] = ['(%i)'%(ii+1) for ii in np.arange(len(obs_table))]
-   
+
    return obs_table
 
 
@@ -711,7 +720,7 @@ def create_dir(path):
          print ("Successfully created the directory %s " % path)
 
 
-def members_prob(table, clf, vars, clipping_prob = 3, data_0 = None):
+def members_prob(table, clf, vars, errvars, clipping_prob = 3, data_0 = None):
    """
    This routine will find probable members through scoring of a passed model (clf).
    """
@@ -719,10 +728,14 @@ def members_prob(table, clf, vars, clipping_prob = 3, data_0 = None):
    has_vars = table.loc[:, vars].notnull().all(axis = 1)
 
    data = table.loc[has_vars, vars]
+   err = table.loc[has_vars, errvars]
 
    clustering_data = table.loc[has_vars, 'clustering_data'] == 1
 
-   results = pd.DataFrame(columns = ['member_clustering_prob', 'member_clustering'], index = table.index)
+   results = pd.DataFrame(columns = ['logprob', 'member_logprob', 'member_zca'], index = table.index)
+
+   for var in vars:
+      results.loc[:, 'w_%s'%var] = np.nan
 
    if (clustering_data.sum() > 1):
 
@@ -731,20 +744,48 @@ def members_prob(table, clf, vars, clipping_prob = 3, data_0 = None):
 
       data -= data_0
 
-      data_std = data.loc[clustering_data, :].std().values
+      clf.fit(data.loc[clustering_data, :])
+      
+      logprob = clf.score_samples(data)
+      label_logprob = logprob >= np.nanmedian(logprob[clustering_data])-clipping_prob*np.nanstd(logprob[clustering_data])
 
-      clf.fit(data.loc[clustering_data, :] / data_std)
+      label_wzca = []
+      for mean, covariances in zip(clf.means_, clf.covariances_):
+         data_c = data-mean
 
-      log_prob = clf.score_samples(data / data_std)
-      label_GMM = log_prob >= np.median(log_prob[clustering_data])-clipping_prob*np.std(log_prob[clustering_data])
+         if clf.covariance_type == 'full':
+            cov = covariances
+         elif clf.covariance_type == 'diag':
+            cov = np.array([[covariances[0],0], [0, covariances[1]]])
+         else:
+            cov = np.array([[covariances,0], [0, covariances]])
 
-      results.loc[has_vars, 'member_clustering_prob'] = log_prob
-      results.loc[has_vars, 'member_clustering'] = label_GMM
+         eigVals, eigVecs = np.linalg.eig(cov)
 
+         diagw = np.diag(1/((eigVals+.1e-6)**0.5)).real.round(5)
+         Wzca = np.dot(np.dot(eigVecs, diagw), eigVecs.T)
+
+         wdata = np.dot(data_c, Wzca)
+         werr = np.dot(err, Wzca)
+
+         label_wzca.append(((wdata**2).sum(axis =1) <= clipping_prob**2) & ((werr**2).sum(axis =1) <= clipping_prob**2))
+      
+      if len(label_wzca) > 1:
+         label_wzca = list(map(all, zip(*label_wzca)))
+      else:
+         label_wzca = label_wzca[0]
+
+      results.loc[has_vars, 'member_logprob'] = label_logprob
+      results.loc[has_vars, 'member_zca'] = label_wzca
+      results.loc[has_vars, 'logprob'] = logprob
+
+      for var, wdata_col in zip(vars, wdata.T):
+         results.loc[has_vars, 'w_%s'%var] = wdata_col
+    
    return results
 
 
-def pm_cleaning_GMM_recursive(table, vars, alt_table = None, data_0 = None, n_components = 1, covariance_type = 'full', clipping_prob = 3, no_plots = True, verbose = False, plot_name = ''):
+def pm_cleaning_GMM_recursive(table, vars, errvars, alt_table = None, data_0 = None, n_components = 1, covariance_type = 'full', clipping_prob = 3, no_plots = True, verbose = True, plot_name = ''):
    """
    This routine iteratively find members using a Gaussian mixture model.
    """
@@ -762,24 +803,29 @@ def pm_cleaning_GMM_recursive(table, vars, alt_table = None, data_0 = None, n_co
       table = pd.concat([table, alt_table], ignore_index = True, sort=True)
 
    clf = mixture.GaussianMixture(n_components = n_components, covariance_type = covariance_type, means_init = np.zeros((n_components, len(vars))))
+   
+   if verbose:
+      print('')
+      print('Finding member stars...')
 
    convergence = False
    iteration = 0
    while not convergence:
-      if verbose:
+      if verbose & (iteration > 0):
          print("\rIteration %i, %i objects remain."%(iteration, table.clustering_data.sum()))
 
-      clust = table.loc[:, vars+['clustering_data']]
+      clust = table.loc[:, vars+errvars+['clustering_data']]
 
       if iteration > 3:
          data_0 = None
 
-      fitting = members_prob(clust, clf, vars, clipping_prob = clipping_prob,  data_0 = data_0)
-      
-      table['member_clustering'] = fitting.member_clustering
-      table['member_clustering_prob'] = fitting.member_clustering_prob
-      table['clustering_data'] = (table.clustering_data == 1) & (fitting.member_clustering == 1)  & (table.real_data == 1)
-      
+      fitting = members_prob(clust, clf, vars, errvars, clipping_prob = clipping_prob,  data_0 = data_0)
+
+      table['member'] = fitting.member_zca
+
+      table['logprob'] = fitting.logprob
+      table['clustering_data'] = (table.clustering_data == 1) & (table.member == 1)  & (table.real_data == 1)
+
       if (iteration > 999):
          convergence = True
       elif iteration > 0:
@@ -787,24 +833,50 @@ def pm_cleaning_GMM_recursive(table, vars, alt_table = None, data_0 = None, n_co
 
       previous_fitting = fitting.copy()
       iteration += 1
-
+   
    if no_plots == False:
       plt.close('all')
-      fig, ax1 = plt.subplots(1, 1)
+      fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (10.5, 4.75), dpi=200)
       ax1.plot(table.loc[table.real_data == 1 ,vars[0]], table.loc[table.real_data == 1 , vars[1]], 'k.', ms = 0.5, zorder = 0)
-      ax1.scatter(table.loc[table.clustering_data == 1 ,vars[0]].values, table.loc[table.clustering_data == 1 ,vars[1]].values, c = table.loc[table.clustering_data == 1, 'member_clustering_prob'].values, s = 1, zorder = 1)
+      ax1.scatter(table.loc[table.clustering_data == 1 ,vars[0]], table.loc[table.clustering_data == 1 ,vars[1]], c = fitting.loc[table.clustering_data == 1, 'logprob'], s = 1, zorder = 1)
       ax1.set_xlabel(r'$\mu_{\alpha*}$')
       ax1.set_ylabel(r'$\mu_{\delta}$')
-      ax1.set_xlim(table.loc[table.real_data == 1 , vars[0]].mean()-5*table.loc[table.real_data == 1 , vars[0]].std(), table.loc[table.real_data == 1 , vars[0]].mean()+5*table.loc[table.real_data == 1 , vars[0]].std())
-      ax1.set_ylim(table.loc[table.real_data == 1 , vars[1]].mean()-5*table.loc[table.real_data == 1 , vars[1]].std(), table.loc[table.real_data == 1 , vars[1]].mean()+5*table.loc[table.real_data == 1 , vars[1]].std())      
       ax1.grid()
+
+      t = np.linspace(0, 2*np.pi, 100)
+      xx = clipping_prob*np.sin(t)
+      yy = clipping_prob*np.cos(t)
+
+      ax2.plot(fitting.loc[table.real_data == 1 , 'w_%s'%vars[0]], fitting.loc[table.real_data == 1 , 'w_%s'%vars[1]], 'k.', ms = 0.5, zorder = 0)
+      ax2.scatter(fitting.loc[table.clustering_data == 1 , 'w_%s'%vars[0]], fitting.loc[table.clustering_data == 1 , 'w_%s'%vars[1]], c = fitting.loc[table.clustering_data == 1, 'logprob'].values, s = 1, zorder = 1)
+      ax2.plot(xx, yy, 'r-', linewidth = 1)
+
+      ax2.set_xlabel(r'$\sigma(\mu_{\alpha*})$')
+      ax2.set_ylabel(r'$\sigma(\mu_{\delta})$')
+      ax2.grid()
+
+      try:
+         margin = 2*(np.nanstd(table.loc[table.real_data == 1 ,vars[0]])+np.nanstd(table.loc[table.real_data == 1 ,vars[1]]))/2
+         ax1.set_xlim(np.nanmedian(table.loc[table.real_data == 1 ,vars[0]])-margin, np.nanmedian(table.loc[table.real_data == 1 ,vars[0]])+margin)
+         ax1.set_ylim(np.nanmedian(table.loc[table.real_data == 1 ,vars[1]])-margin, np.nanmedian(table.loc[table.real_data == 1 ,vars[1]])+margin)
+
+         ax2.set_xlim(-2*clipping_prob, 2*clipping_prob)
+         ax2.set_ylim(-2*clipping_prob, 2*clipping_prob)
+
+      except:
+         pass
+
+      plt.subplots_adjust(wspace=0.3, hspace=0.1)
+
       plt.savefig(plot_name, bbox_inches='tight')
-      plt.close('all')
+
+   if verbose:
+      print('')
 
    if alt_table is not None:
-      return fitting.loc[table.real_data == 1, 'member_clustering'], fitting.loc[table.real_data == 0, 'member_clustering']
+      return table.loc[table.real_data == 1, 'clustering_data'], fitting.loc[table.real_data == 0, 'clustering_data']
    else:
-      return fitting.member_clustering
+      return table.clustering_data
 
 
 def remove_file(file_name):
@@ -1127,9 +1199,9 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
          # Positional and mag error is know to be proportional to the QFIT parameter.
          eradec_hst = lnk.q_hst.copy()
          # Assign the maximum (worst) QFIT parameter to saturated stars.
-         eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.max()}).copy()
-         # 0.75 seems reasonable, although this may be tuned through an empirical function.
-         eradec_hst *= pixel_scale_mas * 0.75
+         eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.mean()+3*lnk.q_hst.std()}).copy()
+         # 0.8 seems reasonable, although this may be tuned through an empirical function.
+         eradec_hst *= pixel_scale_mas * 0.8
 
          lnk['relative_hst_gaia_pmra'] = -(lnk.x_gaia - lnk.xhst_gaia) * pixel_scale_mas / t_baseline
          lnk['relative_hst_gaia_pmdec'] = (lnk.y_gaia - lnk.yhst_gaia) * pixel_scale_mas / t_baseline
@@ -1172,7 +1244,8 @@ def xym2pm_Gaia_multiproc(args):
    return xym2pm_Gaia(*args)
 
 
-def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
+def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, ask_user_stop = False, max_iterations = 10, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
+
    """
    This routine will launch xym2pm_Gaia Fortran routine in parallel or serial using the correct arguments.
    """
@@ -1183,7 +1256,6 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
    if (n_images > 1) and (n_processes != 1):
       pool = Pool(min(n_processes, n_images))
       mat_plots = False
-      verbose = False
    else:
       mat_plots = ~no_plots
 
@@ -1208,6 +1280,9 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
       print("\n-----------")
       print("Iteration %i"%(iteration))
       print("-----------")
+      
+      # Close previous plots
+      plt.close('all')
 
       args = []
       for index_image, (obs_id, HST_image) in data_products_by_obs.loc[data_products_by_obs['parent_obsid'].isin([HST_obs_to_use] if not isinstance(HST_obs_to_use, list) else HST_obs_to_use), ['obs_id', 'productFilename']].iterrows():
@@ -1233,14 +1308,17 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
             # Therefore, we require 5 times the number of stars per amplifier in the entire image instead of 4.
             if (n_field_stars < min_stars_amp*5) and (no_amplifier_based == False):
                print('WARNING: Not enough stars in %s as to separate amplifiers. Only one channel will be used.'%HST_image)
-               no_amplifier_based = True
+               no_amplifier_based_inuse = True
+            elif (n_field_stars >= min_stars_amp*5) and (no_amplifier_based == False):
+               no_amplifier_based_inuse = False
+
             if (u_field_stars < min_stars_alignment):
                print('WARNING: Not enough member stars in %s. Using all the stars in the field.'%HST_image)
                Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'] = True
 
          Gaia_HST_table_field = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), :]
 
-         args.append((iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_image_filename, lnk_filename, mat_filename, amp_filename, exec_path, date_reference_second_epoch, only_use_members, rewind_stars, force_pixel_scale, force_max_separation, force_use_sat, fix_mat, force_wcs_search_radius, min_stars_alignment, verbose, previous_xym2pm, mat_plots, no_amplifier_based, min_stars_amp, use_mean))
+         args.append((iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_image_filename, lnk_filename, mat_filename, amp_filename, exec_path, date_reference_second_epoch, only_use_members, rewind_stars, force_pixel_scale, force_max_separation, force_use_sat, fix_mat, force_wcs_search_radius, min_stars_alignment, verbose, previous_xym2pm, mat_plots, no_amplifier_based_inuse, min_stars_amp, use_mean))
 
       if (len(args) > 1) and (n_processes != 1):
          lnks = pool.map(xym2pm_Gaia_multiproc, args)
@@ -1256,6 +1334,9 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
          print('WARNING: No match could be found for any of the images. Please try with other parameters.\nExiting now.\n')
          remove_file(exec_path)
          sys.exit(1)
+      else:
+         print("-----------")
+         print('%i stars were used in the transformation.'%(min([Gaia_HST_table.use_for_alignment.sum(), n_field_stars])))
 
       lnks_averaged = lnks.groupby(lnks.index).apply(weighted_avg_err)
 
@@ -1314,6 +1395,7 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
             if (iteration == 0):
                Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_pm'] =  manual_select_from_pm(Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'relative_hst_gaia_pmra_%s'%use_mean], Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'relative_hst_gaia_pmdec_%s'%use_mean])
                gauss_center = Gaia_HST_table.loc[Gaia_HST_table.clustering_pm == True, ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean]].mean().values
+
          else:
             Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_pm'] = True
             gauss_center = [0,0]
@@ -1321,12 +1403,11 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
          Gaia_HST_table['clustering_data'] = Gaia_HST_table.clustering_cmd & Gaia_HST_table.clustering_pm
 
          # Select stars in the PM space asuming spherical covariance (Reasonable for dSphs and globular clusters) 
-         pm_clustering = pm_cleaning_GMM_recursive(Gaia_HST_table.copy(), ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean], data_0 = gauss_center, n_components = n_components, covariance_type = 'spherical', clipping_prob = clipping_prob, no_plots = no_plots, plot_name = '%s_PM_sel_%i'%(plot_name, iteration))
+         pm_clustering = pm_cleaning_GMM_recursive(Gaia_HST_table.copy(), ['relative_hst_gaia_pmra_%s'%use_mean, 'relative_hst_gaia_pmdec_%s'%use_mean], ['relative_hst_gaia_pmra_%s_error'%use_mean, 'relative_hst_gaia_pmdec_%s_error'%use_mean], data_0 = gauss_center, n_components = n_components, covariance_type = 'full', clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i.png'%(plot_name, iteration))
+
          Gaia_HST_table['use_for_alignment'] = pm_clustering & Gaia_HST_table.clustering_data
 
       elif not rewind_stars:
-         convergence = True
-      elif iteration > 19:
          convergence = True
       
       # Useful statistics:
@@ -1337,10 +1418,9 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
 
       hst_gaia_pmra_lsqt_evo.append(np.nanstd( (Gaia_HST_table.loc[id_pms, 'hst_gaia_pmra_%s'%use_mean]  - Gaia_HST_table.loc[id_pms, 'pmra'])))
       hst_gaia_pmdec_lsqt_evo.append(np.nanstd( (Gaia_HST_table.loc[id_pms, 'hst_gaia_pmdec_%s'%use_mean] - Gaia_HST_table.loc[id_pms, 'pmdec'])))
-      print("-----------")
       print('RMS(PM_HST+Gaia - PM_Gaia) = (%.4e, %.4e) m.a.s.' %(hst_gaia_pmra_lsqt_evo[-1], hst_gaia_pmdec_lsqt_evo[-1]))
 
-      if iteration > 19:
+      if iteration >= (max_iterations-1):
          print('\nWARNING: Max number of iterations reached: Something might have gone wrong!\nPlease check the results carefully.')
          convergence = True
 
@@ -1352,10 +1432,27 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
          threshold = np.nanmean(Gaia_HST_table.loc[id_pms, ['relative_hst_gaia_pmra_%s_error'%use_mean, 'relative_hst_gaia_pmdec_%s_error'%use_mean]].mean())*1e-1
 
          print('PM variation = (%.4e, %.4e)  m.a.s.' %(pmra_diff_evo[-1], pmdec_diff_evo[-1]))
-         print('Threshold = %.4e  m.a.s.'%threshold)
 
-         convergence = (np.abs(pmra_diff_evo[-1]) <= threshold) & (np.abs(pmdec_diff_evo[-1]) <= threshold)
+         if rewind_stars:
+            print('Threshold = %.4e  m.a.s.'%threshold)
+            convergence = (np.abs(pmra_diff_evo[-1]) <= threshold) & (np.abs(pmdec_diff_evo[-1]) <= threshold)
+         else:
+            convergence = Gaia_HST_table.use_for_alignment.equals(previous_use_for_alignment)
 
+      if ask_user_stop & (iteration > 0) & (quiet == False):
+         with plt.rc_context(rc={'interactive': False}):
+            plt.gcf().show()
+         try:
+            print('\nCheck the preliminary results in the VPD. If you are satisfied, you can stop the execution.')
+            continue_loop = input('Continue with the next iteration?') or 'y'
+            continue_loop = str2bool(continue_loop)
+            print('')
+            if not continue_loop:
+               convergence = True
+         except:
+            print('WARNING: Answer not understood. Continuing execution.')
+
+      previous_use_for_alignment = Gaia_HST_table.use_for_alignment.copy()
       iteration += 1
 
    if (n_images > 1) and (n_processes != 1):
@@ -1712,7 +1809,7 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_mean = 'wmea
    ax.set_xlabel("RA")
    ax.set_ylabel("Dec")
 
-   if table.use_for_alignment.sum() < len(table):
+   if (table.use_for_alignment.sum() < len(table)) & (table.use_for_alignment.sum() > 0):
       try:
          p1 = ax.scatter(table['ra'][table.use_for_alignment == False & id_gaia], table['dec'][table.use_for_alignment == False & id_gaia], transform=ax.get_transform('world'), s=10, linewidth = 1, facecolor='none', edgecolor='k', alpha = 0.35, zorder = 1)
          p1 = ax.scatter(table['ra'][table.use_for_alignment == False & id_hst_gaia], table['dec'][table.use_for_alignment == False & id_hst_gaia], transform=ax.get_transform('world'), s=30, linewidth = 1, facecolor='none', edgecolor='r', alpha = 0.35, zorder = 2)
@@ -1724,18 +1821,18 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_mean = 'wmea
             q1 = ax.quiver(table['ra'][table.use_for_alignment == False & id_hst_gaia], table['dec'][table.use_for_alignment == False & id_hst_gaia], -table['hst_gaia_pmra_%s'%use_mean][table.use_for_alignment == False & id_hst_gaia], table['hst_gaia_pmdec_%s'%use_mean][table.use_for_alignment == False & id_hst_gaia], transform=ax.get_transform('world'), width = 0.003, angles = 'xy', color='r', alpha = 0.35, zorder = 2)
       except:
          pass
-
-   try:
-      p2 = ax.scatter(table['ra'][table.use_for_alignment == True & id_gaia], table['dec'][table.use_for_alignment == True & id_gaia], transform=ax.get_transform('world'), s=10, linewidth = 1, facecolor='none', label=GDR, edgecolor='k', zorder = 1)
-      p2 = ax.scatter(table['ra'][table.use_for_alignment == True & id_hst_gaia], table['dec'][table.use_for_alignment == True & id_hst_gaia], transform=ax.get_transform('world'), s=30, linewidth = 1, facecolor='none', label=GaiaHub_GDR, edgecolor='r', zorder = 2)
-   except:
-      pass
-   try:
-      with warnings.catch_warnings():
-         warnings.simplefilter("ignore")
-         q2 = ax.quiver(table['ra'][table.use_for_alignment == True & id_hst_gaia],table['dec'][table.use_for_alignment == True & id_hst_gaia], -table['hst_gaia_pmra_%s'%use_mean][table.use_for_alignment == True & id_hst_gaia], table['hst_gaia_pmdec_%s'%use_mean][table.use_for_alignment == True & id_hst_gaia], transform=ax.get_transform('world'), width = 0.003, angles = 'xy', color='r', zorder = 2)
-   except:
-      pass
+   if table.use_for_alignment.sum() > 0:
+      try:
+         p2 = ax.scatter(table['ra'][table.use_for_alignment == True & id_gaia], table['dec'][table.use_for_alignment == True & id_gaia], transform=ax.get_transform('world'), s=10, linewidth = 1, facecolor='none', label=GDR, edgecolor='k', zorder = 1)
+         p2 = ax.scatter(table['ra'][table.use_for_alignment == True & id_hst_gaia], table['dec'][table.use_for_alignment == True & id_hst_gaia], transform=ax.get_transform('world'), s=30, linewidth = 1, facecolor='none', label=GaiaHub_GDR, edgecolor='r', zorder = 2)
+      except:
+         pass
+      try:
+         with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            q2 = ax.quiver(table['ra'][table.use_for_alignment == True & id_hst_gaia],table['dec'][table.use_for_alignment == True & id_hst_gaia], -table['hst_gaia_pmra_%s'%use_mean][table.use_for_alignment == True & id_hst_gaia], table['hst_gaia_pmdec_%s'%use_mean][table.use_for_alignment == True & id_hst_gaia], transform=ax.get_transform('world'), width = 0.003, angles = 'xy', color='r', zorder = 2)
+      except:
+         pass
 
    ax.grid()
 
