@@ -144,7 +144,7 @@ def gaiahub(argv):
 
       Gaia_table['clean_label'] = clean_label
 
-      Gaia_table.to_csv(args.Gaia_clean_table_filename)
+      Gaia_table.to_csv(args.Gaia_clean_table_filename, index = False)
 
    """
    The script tries to load an existing HST table, otherwise it will download it from the MAST archive.
