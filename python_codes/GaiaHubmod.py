@@ -769,7 +769,7 @@ def members_prob(table, clf, vars, errvars, clipping_prob = 3, data_0 = None):
          werr = np.dot(err, Wzca)
 
          label_wzca.append(((wdata**2).sum(axis =1) <= clipping_prob**2) & ((werr**2).sum(axis =1) <= clipping_prob**2))
-      
+
       if len(label_wzca) > 1:
          label_wzca = list(map(all, zip(*label_wzca)))
       else:
@@ -820,8 +820,13 @@ def pm_cleaning_GMM_recursive(table, vars, errvars, alt_table = None, data_0 = N
          data_0 = None
 
       fitting = members_prob(clust, clf, vars, errvars, clipping_prob = clipping_prob,  data_0 = data_0)
-
-      table['member'] = fitting.member_zca
+      
+      # If the ZCA detects too few members, we use the logprob.
+      if fitting.member_zca.sum() < 10:
+         print('WARNING: Not enough members after ZTA whitening. Switching to selection based on logarithmic probability.')
+         table['member'] = fitting.member_logprob
+      else:
+         table['member'] = fitting.member_zca
 
       table['logprob'] = fitting.logprob
       table['clustering_data'] = (table.clustering_data == 1) & (table.member == 1)  & (table.real_data == 1)
@@ -1099,6 +1104,8 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
    t_max = hdul[0].header['EXPEND']
    ra_cent = hdul[0].header['RA_TARG']
    dec_cent = hdul[0].header['DEC_TARG']
+   exptime = hdul[0].header['EXPTIME']
+
    try:
       filter = [filter for filter in [hdul[0].header['FILTER1'], hdul[0].header['FILTER2']] if 'CLEAR' not in filter][0]
    except:
@@ -1216,10 +1223,10 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
 
          match = lnk.loc[:, ['xc_hst', 'yc_hst',  filter, '%s_error'%filter, 'relative_hst_gaia_pmra', 'relative_hst_gaia_pmra_error', 'relative_hst_gaia_pmdec', 'relative_hst_gaia_pmdec_error', 'gaia_dra_uncertaintity', 'gaia_ddec_uncertaintity', 'q_hst']]
 
-         print('-->%s: matched %i stars.'%(os.path.basename(HST_image_filename), len(match)))
+         print('-->%s (%s, %ss): matched %i stars.'%(os.path.basename(HST_image_filename), filter, exptime, len(match)))
       
       else:
-         print('-->%s: bad quality match:'%os.path.basename(HST_image_filename))
+         print('-->%s (%s, %ss): bad quality match:'%(os.path.basename(HST_image_filename), filter, exptime))
          if verbose:
             if valid_mat[0] != True:
                print('   Non Gaussian distribution found in the transformation')
@@ -1371,7 +1378,7 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
                if len(hst_filters) >= 2:
                   for f1, f2 in itertools.combinations(hst_filters, 2):
                      if (len((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, f1] - Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, f2]).dropna()) >=  min_HST_HST_stars):
-                        Gaia_HST_table[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] =  manual_select_from_cmd((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment,hst_filters[0]]-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]]).rename('%s - %s'%(hst_filters[0], hst_filters[1])), Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]])
+                        Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] =  manual_select_from_cmd((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment,hst_filters[0]]-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]]).rename('%s - %s'%(hst_filters[0], hst_filters[1])), Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]])
                         cmd_sel = True
                         break
 
@@ -1443,8 +1450,8 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
          with plt.rc_context(rc={'interactive': False}):
             plt.gcf().show()
          try:
-            print('\nCheck the preliminary results in the VPD. If you are satisfied, you can stop the execution.')
-            continue_loop = input('Continue with the next iteration?') or 'y'
+            print('\nCheck the preliminary results in the VPD.')
+            continue_loop = input('Continue with the next iteration? ') or 'y'
             continue_loop = str2bool(continue_loop)
             print('')
             if not continue_loop:
@@ -2251,3 +2258,16 @@ def str2bool(v):
       raise argparse.ArgumentTypeError('Boolean value expected.')
    
 
+def get_real_error(table):
+   """
+   This routine calculates the excess of error that should be added to the listed Gaia errors. The lines are based on Fabricius 2021. Figure 21.
+   """
+
+   p5 = table.astrometric_params_solved == 31 # 5p parameters solved Brown et al. (2020)
+   
+   table.loc[:, ['parallax_error_old', 'pmra_error_old', 'pmdec_error_old']] = table.loc[:, ['parallax_error', 'pmra_error', 'pmdec_error']].values
+   
+   table.loc[p5, ['ra_error', 'dec_error', 'parallax_error', 'pmra_error', 'pmdec_error']] = table.loc[p5, ['ra_error', 'dec_error', 'parallax_error', 'pmra_error', 'pmdec_error']].values * 1.05
+   table.loc[~p5, ['ra_error', 'dec_error', 'parallax_error', 'pmra_error', 'pmdec_error']] = table.loc[~p5, ['ra_error', 'dec_error', 'parallax_error', 'pmra_error', 'pmdec_error']].values * 1.22
+
+   return table

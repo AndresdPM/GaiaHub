@@ -53,33 +53,34 @@ def gaiahub(argv):
 
    # HST options
    parser.add_argument('--hst1pass', action='store_true', help='Force the program to perform the search for sources in the HST images. Default is False, which will use existing files if any.')
-   parser.add_argument('--fmin', type=int, default= None, help='Minimum flux above the sky to substract a source in the HST image. Default is automatic, computed from the HST integration time.')
+   parser.add_argument('--fmin', type=int, default= None, help='Minimum flux above the sky to subtract a source in the HST image. Default is automatic, computed from the HST integration time.')
    parser.add_argument('--pixel_scale', type=float, default= None, help='Pixel scale in arcsec/pixel used to compute the tangential plane during the match between epochs. Default is automatic, and will take the value from the HST images.')
    parser.add_argument('--hst_filters', type=str, nargs='+', default = ['any'], help='Required filter for the HST images. Default all filters. They can be added as a list, e.g. "F814W" "F606W".')
    parser.add_argument('--hst_integration_time_min', type=float, default = 50, help='Required minimum average integration time for a set of HST images. This quantity is a limit on the average exposure time of an entire set of observations. Therefore, longer and shorter exposures may be available in an specific data set.')
-   parser.add_argument('--hst_integration_time_max', type=float, default = 2000, help='Required maximum average integration time for a set of HST images. This quantity is a limit on the average exposure time of an entire set of observations. Therefore, longer and shorter exposures may be available in an specific data set. Expossures with less that 500 seconds of integration time are preferred. The default value is 2000 seconds, which is far more than the optimal value, but allow datasets with combinations of short and long expossures to be considered.')
+   parser.add_argument('--hst_integration_time_max', type=float, default = 2000, help='Required maximum average integration time for a set of HST images. This quantity is a limit on the average exposure time of an entire set of observations. Therefore, longer and shorter exposures may be available in an specific data set. Exposures with less that 500 seconds of integration time are preferred. The default value is 2000 seconds, which is far more than the optimal value, but allow datasets with combinations of short and long exposures to be considered.')
    parser.add_argument('--time_baseline', type=float, default = 2190, help='Minimum time baseline with respect to Gaia EDR3 in days. Default 2190.')
    parser.add_argument('--project', type=str, nargs='+', default = ['HST'], help='Processing project. E.g. HST, HLA, EUVE, hlsp_legus. Default HST. They can be added as a list, e.g. "HST", "HLA".')
-   parser.add_argument('--field_id', type=str, nargs='+', default = None, help='Specify the Ids of the fields to download. This is an internal id created by GaiaHub (field_id). The default value, "y", will download all the available HST observations fulfiling the required conditions. The user can also especify "n" for none, or the specific ids separated by spaces.')
+   parser.add_argument('--field_id', type=str, nargs='+', default = None, help='Specify the Ids of the fields to download. This is an internal id created by GaiaHub (field_id). The default value, "y", will download all the available HST observations fulfilling the required conditions. The user can also specify "n" for none, or the specific ids separated by spaces.')
 
    # HST-Gaia match options
    parser.add_argument('--use_only_good_gaia', action='store_true', help = 'Force GaiaHub to use all the Gaia stars to make the alignment with HST. Otherwise, GaiaHub will use only good measurements based on Gaia EDR3 quality flags. Useful when not enough good stars are available.')
    parser.add_argument('--use_members', action='store_true', help='Whether to use only member stars for the epochs alignment or to use all available stars.')
-   parser.add_argument('--preselect_cmd', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the color-magnitude diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contaminanation from non-member stars.')
-   parser.add_argument('--preselect_pm', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the vector-point diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contaminanation from non-member stars, or when there are a significant amount of contaminants.')
+   parser.add_argument('--preselect_cmd', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the color-magnitude diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contamination from non-member stars.')
+   parser.add_argument('--preselect_pm', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the vector-point diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contamination from non-member stars, or when there are a significant amount of contaminants.')
    parser.add_argument('--clipping_prob_pm', type=float, default=3, help='Ratio used for clipping in PM when selecting members. Default is 0.95.')
    parser.add_argument('--ask_user_stop', action='store_true', help='It ask the user whether to continue with the next iteration instead of continuing until convergence is reached. It only works when "--use_only_good_gaia" or "--rewind_stars" are in use. It can be useful when convergence fails.')
    parser.add_argument('--max_iterations', type=int, default = 10, help='Maximum number of allowed iterations before convergence. Default 10.')
-   parser.add_argument('--pm_n_components', type=int, default=1, help='Number of Gaussian componnents for pm and parallax clustering. Default is 1.')
+   parser.add_argument('--pm_n_components', type=int, default=1, help='Number of Gaussian components for pm and parallax clustering. Default is 1.')
    parser.add_argument('--previous_xym2pm', action='store_true', help='Force the program to perform the match between Gaia and HST sources. If False, the code will use existing files if any.')
    parser.add_argument('--rewind_stars', action='store_true', help='Force the program to use the PMs to rewind the stars from their second epoch to the first one before the matching.')
    parser.add_argument('--fix_mat', action='store_true', help='Force the program to use only the best stars in the MAT files to perform the alignment in the next iteration.')
-   parser.add_argument('--max_separation', type=float, default= None, help='Maximum allowed separation in pixels during the match between epochs. Default 10 pixels.')
+   parser.add_argument('--max_separation', type=float, default= None, help='Maximum allowed separation in pixels during the match between epochs. Default 5 pixels.')
    parser.add_argument('--use_sat', action='store_true', help='Force the program to use saturated stars during the match between epochs. Default is True.')
    parser.add_argument('--wcs_search_radius', type=float, default= None, help='When set to a radius (in arcsec), the program search the closest Gaia star to each bright star in the HST image within that distance to perform a pre-alignment between the two frames. Useful when not many stars are available. Default is None.')
    parser.add_argument('--min_stars_alignment', type=int, default = 10, help='Minimum number of stars per HST image to be used for the epochs alignment. Default 10.')
    parser.add_argument('--no_amplifier_based', action='store_true', help='Force the program to use only one channel instead of amplifier-based transformations.')
    parser.add_argument('--min_stars_amp', type=int, default = 10, help='Minimum number of stars per HST amplifier to compute transformations. Default is 10.')
+   parser.add_argument('--no_error_correction', action='store_true', help='By default, GaiaHub will multiply the Gaia positional errors by 1.05 and 1.22 for 5-parameter and 6-parameter solutions, respectively. This flag deactivates that behavior.')
 
    #Miscellaneus options
    parser.add_argument('--n_processes', type = int, default = -1, help='The number of jobs to run in parallel. Default is -1, which uses all the available processors. For single-threaded execution use 1.')
@@ -88,7 +89,7 @@ def gaiahub(argv):
    parser.add_argument('--no_error_weighted', action='store_true', help = 'The program will use non-weighted arithmetic mean to compute the PMs. By default, the code will try to make use of the errors obtained for each individual HST image in order to compute a final error-weighted mean for the PMs. This flag forces the code to use a normal arithmetic mean instead. Useful if you think all HST images should have exactly the same weight.')
    parser.add_argument('--remove_previous_files', action='store_true', help='Remove previous intermediate files.')
    parser.add_argument('--verbose', action='store_true', help='It controls the program verbosity. Default True.')
-   parser.add_argument('--quiet', action='store_true', help='This flag deactivate the interactivity of GaiaHub. When used, GaiaHub will use all the default values without asking the user. This flag unables the "--preselect_cmd" option.')
+   parser.add_argument('--quiet', action='store_true', help='This flag deactivate the interactivity of GaiaHub. When used, GaiaHub will use all the default values without asking the user. This flag override and prevent the "--preselect_cmd" option.')
 
    if len(argv)==0:
       parser.print_help(sys.stderr)
@@ -109,7 +110,7 @@ def gaiahub(argv):
    """
    The script tries to load an existing Gaia table, otherwise it will download it from the Gaia archive.
    """
-   installation_path = ''
+   installation_path = '/Users/adelpinomolina/GaiaHub'
    gh.remove_file(args.exec_path)
    os.symlink(installation_path, args.exec_path)
 
@@ -145,6 +146,13 @@ def gaiahub(argv):
       Gaia_table['clean_label'] = clean_label
 
       Gaia_table.to_csv(args.Gaia_clean_table_filename, index = False)
+   
+   if args.no_error_correction:
+      """
+      The script increase a bit all positional errors according to EDR3 verification papers.
+      """
+      Gaia_table = gh.get_real_error(Gaia_table)
+   
 
    """
    The script tries to load an existing HST table, otherwise it will download it from the MAST archive.
