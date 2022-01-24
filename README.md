@@ -42,3 +42,4 @@ To know more about all GaiaHub options:
 
 $ gaiaHub --help
 
+For more examples please see del Pino et al. 2022 (ApJ submitted) and the Documentation file (Documentation_v1.pdf).
