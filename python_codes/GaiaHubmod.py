@@ -634,8 +634,8 @@ def search_mast(ra, dec, search_width = 0.25, search_height = 0.25, filters = ['
    This routine search for HST observations in MAST at a given position.
    """
 
-   ra1 = ra - search_width / 2 + 0.056*np.cos(np.deg2rad(dec))
-   ra2 = ra + search_width / 2 - 0.056*np.cos(np.deg2rad(dec))
+   ra1 = ra - search_width / 2 + 0.056 / np.cos(np.deg2rad(dec))
+   ra2 = ra + search_width / 2 - 0.056 / np.cos(np.deg2rad(dec))
    dec1 = dec - search_height / 2 + 0.056
    dec2 = dec + search_height / 2 - 0.056
 
