@@ -1528,8 +1528,8 @@ def find_stars_to_align(stars_catalog, HST_image_filename):
       #We add 10 arcsec of HST pointing error to the footprint to ensure we have all the stars.
       center_chip = np.mean(footprint_chip, axis = 0)
 
-      footprint_chip[np.where(footprint_chip[:,0] < center_chip[0]),0] -= 0.0028*np.cos(np.deg2rad(center_chip[1]))
-      footprint_chip[np.where(footprint_chip[:,0] > center_chip[0]),0] += 0.0028*np.cos(np.deg2rad(center_chip[1]))
+      footprint_chip[np.where(footprint_chip[:,0] < center_chip[0]),0] -= 0.0028 / np.cos(np.deg2rad(center_chip[1]))
+      footprint_chip[np.where(footprint_chip[:,0] > center_chip[0]),0] += 0.0028 / np.cos(np.deg2rad(center_chip[1]))
 
       footprint_chip[np.where(footprint_chip[:,1] < center_chip[1]),1] -= 0.0028
       footprint_chip[np.where(footprint_chip[:,1] > center_chip[1]),1] += 0.0028
