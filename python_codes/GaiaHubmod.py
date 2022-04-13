@@ -542,18 +542,18 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
                fields_data.append([index_obs, round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), t_bl, fc, sum(gaia_stars_per_poly)])
             else:
                bad_patches.append(polygon)
-               bad_fields_data.append([round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), fc])
+               bad_fields_data.append([round(s_ra, 2), round(s_dec, 2), filter, coolwarm(float(filter.replace(r'F', '').replace(r'W', '').replace('LP', ''))), fc, sum(gaia_stars_per_poly)])
    print('\n')
 
    fields_data = pd.DataFrame(data = fields_data, columns=['Index_obs', 'ra', 'dec', 'filter', 'filter_color', 't_baseline', 'download_color', 'gaia_stars_per_obs'])
-   bad_fields_data = pd.DataFrame(data = bad_fields_data, columns=['ra', 'dec', 'filter', 'filter_color', 'download_color'])
+   bad_fields_data = pd.DataFrame(data = bad_fields_data, columns=['ra', 'dec', 'filter', 'filter_color', 'download_color', 'gaia_stars_per_obs'])
 
    # Select only the observations with enough Gaia stars
-   try:
+   if (not fields_data.empty) and (not obs_table.empty):
       obs_table = obs_table.iloc[fields_data.Index_obs, :].reset_index(drop=True)
       obs_table['gaia_stars_per_obs'] = fields_data.gaia_stars_per_obs
-   except:
-      pass
+   elif (not obs_table.empty):
+      obs_table['gaia_stars_per_obs'] = bad_fields_data.gaia_stars_per_obs
 
    if no_plots == False:
 
@@ -579,20 +579,33 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
       ax.plot(Gaia_table.ra[~Gaia_table.clean_label], Gaia_table.dec[~Gaia_table.clean_label], '.', color = '0.6', ms = 0.75, zorder = 0)
       ax.plot(Gaia_table.ra[Gaia_table.clean_label], Gaia_table.dec[Gaia_table.clean_label], '.', color = '0.2', ms = 0.75, zorder = 1)
 
-      for coo, obs_id in fields_data.groupby(['ra','dec']).apply(lambda x: x.index.tolist()).iteritems():
-         if len(obs_id) > 1:
-            obs_id = '%i-%i'%(min(obs_id)+1, max(obs_id)+1)
-         else:
-            obs_id = obs_id[0]+1
-         ax.annotate(obs_id, xy=(coo[0], coo[1]), xycoords='data', color = 'k', zorder = 3)
-      
-      for ii, (t_bl, obs_id) in enumerate(fields_data.groupby(['t_baseline']).apply(lambda x: x.index.tolist()).iteritems()):
-         if len(obs_id) > 1:
-            obs_id = '%i-%i, %.2f years'%(min(obs_id)+1, max(obs_id)+1, t_bl)
-         else:
-            obs_id = '%i, %.2f years'%(obs_id[0]+1, t_bl)
-         t = ax.annotate(obs_id, xy=(0.05, 0.95-0.05*ii), xycoords='axes fraction', fontsize = 9, color = 'k', zorder = 3)
-         t.set_path_effects([withStroke(foreground="w", linewidth=3)])
+      legend_elements = [Line2D([0], [0], marker='.', color='None', markeredgecolor='0.2', markerfacecolor='0.2', label = 'Good stars'), Line2D([0], [0], marker='.', color='None', markeredgecolor='0.6', markerfacecolor='0.6', label = 'Bad stars')]
+
+      if not fields_data.empty:
+
+         for coo, obs_id in fields_data.groupby(['ra','dec']).apply(lambda x: x.index.tolist()).iteritems():
+             if len(obs_id) > 1:
+                 obs_id = '%i-%i'%(min(obs_id)+1, max(obs_id)+1)
+             else:
+                 obs_id = obs_id[0]+1
+             ax.annotate(obs_id, xy=(coo[0], coo[1]), xycoords='data', color = 'k', zorder = 3)
+
+         for ii, (t_bl, obs_id) in enumerate(fields_data.groupby(['t_baseline']).apply(lambda x: x.index.tolist()).iteritems()):
+             if len(obs_id) > 1:
+                 obs_id = '%i-%i, %.2f years'%(min(obs_id)+1, max(obs_id)+1, t_bl)
+             else:
+                 obs_id = '%i, %.2f years'%(obs_id[0]+1, t_bl)
+             t = ax.annotate(obs_id, xy=(0.05, 0.95-0.05*ii), xycoords='axes fraction', fontsize = 9, color = 'k', zorder = 3)
+             t.set_path_effects([withStroke(foreground="w", linewidth=3)])
+
+         if [0,1,0,0.2] in fields_data.download_color.tolist():
+            legend_elements.extend([Patch(facecolor=[0,1,0,0.2], edgecolor='0.4',
+                                    label='Previously downloaded'),
+                                    Patch(facecolor=[1,1,1,0.2], edgecolor='0.4',
+                                    label='Not yet downloaded')])
+
+         for filter, filter_color in fields_data.groupby(['filter'])['filter_color'].first().iteritems():
+            legend_elements.append(Patch(facecolor='1', edgecolor=filter_color, label=filter))
 
       ax.set_xlim(ra_lims[0], ra_lims[1])
       ax.set_ylim(dec_lims[0], dec_lims[1])
@@ -601,19 +614,9 @@ def plot_fields(Gaia_table, obs_table, HST_path, use_only_good_gaia = False, min
       ax.set_xlabel(r'RA [$^\circ$]')
       ax.set_ylabel(r'Dec [$^\circ$]')
 
-      legend_elements = [Line2D([0], [0], marker='.', color='None', markeredgecolor='0.2', markerfacecolor='0.2', label = 'Good stars'), Line2D([0], [0], marker='.', color='None', markeredgecolor='0.6', markerfacecolor='0.6', label = 'Bad stars')]
-
-      if [0,1,0,0.2] in fields_data.download_color.tolist():
-         legend_elements.extend([Patch(facecolor=[0,1,0,0.2], edgecolor='0.4',
-                                 label='Previously downloaded'),
-                           Patch(facecolor=[1,1,1,0.2], edgecolor='0.4',
-                                 label='Not yet downloaded')])
       if len(bad_patches) > 0:
          legend_elements.append(Patch(facecolor=[1,1,1,0.2], edgecolor='0.4', hatch='/////',
                                  label='Not enough good stars'))
-
-      for filter, filter_color in fields_data.groupby(['filter'])['filter_color'].first().iteritems():
-         legend_elements.append(Patch(facecolor='1', edgecolor=filter_color, label=filter))
 
       ax.legend(handles=legend_elements, prop={'size': 7})
 
@@ -1513,7 +1516,7 @@ def find_stars_to_align(stars_catalog, HST_image_filename):
    from shapely.ops import unary_union
 
    HST_image = HST_image_filename.split('/')[-1].split('.fits')[0]
-   
+
    hdu = fits.open(HST_image_filename)
    
    if 'HST_image' not in stars_catalog.columns:
@@ -1528,6 +1531,7 @@ def find_stars_to_align(stars_catalog, HST_image_filename):
       #We add 10 arcsec of HST pointing error to the footprint to ensure we have all the stars.
       center_chip = np.mean(footprint_chip, axis = 0)
 
+      # JKJKJK You have changed the cosine
       footprint_chip[np.where(footprint_chip[:,0] < center_chip[0]),0] -= 0.0028 / np.cos(np.deg2rad(center_chip[1]))
       footprint_chip[np.where(footprint_chip[:,0] > center_chip[0]),0] += 0.0028 / np.cos(np.deg2rad(center_chip[1]))
 

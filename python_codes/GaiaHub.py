@@ -110,7 +110,7 @@ def gaiahub(argv):
    """
    The script tries to load an existing Gaia table, otherwise it will download it from the Gaia archive.
    """
-   installation_path = ''
+   installation_path = '/home/adpm/Software/GaiaHub'
    gh.remove_file(args.exec_path)
    os.symlink(installation_path, args.exec_path)
 
@@ -167,12 +167,16 @@ def gaiahub(argv):
    """
    obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, use_only_good_gaia = args.use_only_good_gaia,  min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
 
-   if len(obs_table) > 0:
+   if (obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment).any() and (not obs_table.empty):
+
+      """
+      Select only observations with enough number of stars
+      """
+      obs_table = obs_table.loc[obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment, :]
 
       """
       Ask whether the user wish to download the available HST images 
       """
-
       print(obs_table.loc[:, ['obsid', 'filters', 'n_exp', 'i_exptime', 'obs_time', 't_baseline', 'gaia_stars_per_obs', 'proposal_id', 's_ra', 's_dec', 'field_id']].to_string(index=False), '\n')
 
       if (args.quiet is True) and (args.field_id is None):
@@ -252,10 +256,18 @@ def gaiahub(argv):
       f.close()
 
    else:
+      print('No suitable HST observations were found.')
+      if obs_table.empty:
+         print('Please consider using different search parameters.')
+      elif (obs_table['gaia_stars_per_obs'] < args.min_stars_alignment).any():
+         print('Not enough stars to perform the epoch alignment.')
+         print('The minimum number of stars required is currently set to %s.'%args.min_stars_alignment)
+         print('You may want to change this value using the "min_stars_alignment" and "min_stars_amp" options.')
+         print('NOTICE: Using less than 10 stars is not recomended. A minimum of 3 is required.')
       if args.quiet:
-         print('No suitable HST observations were found. Please try with different parameters. Exiting now.')
+         print('Exiting now.')
       else:
-         input('No suitable HST observations were found. Please try with different parameters.\nPress enter to exit.\n')
+         input('\nPress enter to exit.\n')
 
    # Remove temporary links
    gh.remove_file(args.exec_path)
