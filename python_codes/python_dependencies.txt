@@ -39,3 +39,6 @@ typing-extensions
 urllib3
 webencodings==0.5.1
 zipp
+bs4
+shutil
+
