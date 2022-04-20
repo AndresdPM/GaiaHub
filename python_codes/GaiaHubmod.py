@@ -1321,6 +1321,8 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
                no_amplifier_based_inuse = True
             elif (n_field_stars >= min_stars_amp*5) and (no_amplifier_based == False):
                no_amplifier_based_inuse = False
+            else:
+               no_amplifier_based_inuse = True
 
             if (u_field_stars < min_stars_alignment):
                print('WARNING: Not enough member stars in %s. Using all the stars in the field.'%HST_image)
