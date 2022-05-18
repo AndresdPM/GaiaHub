@@ -264,7 +264,7 @@ def installation():
 
       print('The installation needs to compile two Fortran routines.')
       print('There are known issues with very recent compilers.')
-      print('We recommend to use gfortran version 8 or lower.')
+      print('We recommend to use version 8 or lower of gfortran.')
       print('By default, the command "gfortran" will be executed.')
       compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler command if you wish.\n') or "gfortran"
 
