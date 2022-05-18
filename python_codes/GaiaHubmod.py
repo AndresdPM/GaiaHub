@@ -998,7 +998,7 @@ def hst1pass(HST_path, exec_path, obs_id, HST_image, force_fmin, force_hst1pass,
       if verbose:
          print('%s exptime = %.1f. Using fmin = %i'%(HST_image, hdul[0].header['EXPTIME'], fmin))
 
-      psf_filename = '%s/lib/STDPSFs/%s%s/PSFSTD_%s%s_%s%s.fits'%(exec_path, instrument, detector, instrument, detector, filter_psf, sm)
+      psf_filename = '%s/lib/STDPSFs/%s%s/STDPSF_%s%s_%s%s.fits'%(exec_path, instrument, detector, instrument, detector, filter_psf, sm)
       gdc_filename = '%s/lib/STDGDCs/%s%s/STDGDC_%s%s_%s.fits'%(exec_path, instrument, detector, instrument, detector, filter)
 
       if os.path.isfile(psf_filename) and os.path.isfile(gdc_filename):
