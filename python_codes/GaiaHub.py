@@ -216,14 +216,14 @@ def gaiahub(argv):
       flc_images = data_products_by_obs[(data_products_by_obs['productSubGroupDescription'] == 'FLC') & (data_products_by_obs['parent_obsid'].isin(HST_obs_to_use))]
 
       """
-      Call hst1pass
+      Call hst1pass_GH
       """
-      gh.launch_hst1pass(flc_images, HST_obs_to_use, args.HST_path, args.exec_path, force_fmin = args.fmin, force_hst1pass = args.hst1pass, n_processes = args.n_processes)
+      gh.launch_hst1pass_GH(flc_images, HST_obs_to_use, args.HST_path, args.exec_path, force_fmin = args.fmin, force_hst1pass = args.hst1pass, n_processes = args.n_processes)
 
       """
-      Call xym2pm_Gaia
+      Call xym2pm_GH
       """
-      Gaia_table_hst, lnks = gh.launch_xym2pm_Gaia(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_only_good_gaia = args.use_only_good_gaia, min_stars_alignment = args.min_stars_alignment, use_mean = args.use_mean, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, ask_user_stop = args.ask_user_stop, max_iterations = args.max_iterations, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'PM_Sel')
+      Gaia_table_hst, lnks = gh.launch_xym2pm_GH(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_only_good_gaia = args.use_only_good_gaia, min_stars_alignment = args.min_stars_alignment, use_mean = args.use_mean, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, ask_user_stop = args.ask_user_stop, max_iterations = args.max_iterations, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'PM_Sel')
 
       """
       Save Gaia and HST tables
