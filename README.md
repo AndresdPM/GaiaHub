@@ -42,4 +42,10 @@ To know more about all GaiaHub options:
 
 $ gaiaHub --help
 
-For more examples please see del Pino et al. 2022 (ApJ submitted) and the Documentation file (Documentation_v1.pdf).
+For more examples please see [del Pino et al. 2022 (ApJ submitted)](https://arxiv.org/abs/2205.08009) and the Documentation file (Documentation_v1.pdf).
+
+## Notes on Version 1.0.1
+
+- Fixed the installer.
+- Included hst1pass_GH.F.
+- Fixed the list of python dependencies.
