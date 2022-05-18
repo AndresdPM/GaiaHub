@@ -66,7 +66,7 @@ def get_hst1pass(installation_folder, repo = 'https://www.stsci.edu/~jayander'):
    print('\n')
 
 
-def get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~jayander', libs = ['STDPSFs', 'STDGDCs'], filters = ['F555W','F606W','F775W','F814W','F850LP'], instrument = ['ACSWFC', 'ACSHRC', 'WFC3UV', 'WFC3IR']):
+def get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~jayander/HST1PASS/LIB', libs = ['/PSFs/STDPSFs', '/GDCs/STDGDCs'], filters = ['F555W','F606W','F775W','F814W','F850LP'], instrument = ['ACSWFC', 'ACSHRC', 'WFC3UV', 'WFC3IR']):
    """
    This routine finds the required PSF and geometric distorsion libraries.
    """
@@ -81,10 +81,12 @@ def get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~ja
    files_urls = []
    output_files = []
 
-   for comb in itertools.product(libs, instrument):
-      url = '%s/%s/%s'%(repo, comb[0], comb[1])
+   for (comb_0, comb_1) in itertools.product(libs, instrument):
+      if ('ACSWFC' in comb_1) and ('GDCs' in comb_0):
+          comb_1 = 'ACSWFC/VINTAGE_2005'
+      url = '%s/%s/%s'%(repo, comb_0, comb_1)
       for file_url in listFD(url, ext='fits'):
-         file_output = '%s/lib/%s/%s/%s'%(installation_folder, comb[0], comb[1], os.path.split(file_url)[-1])
+         file_output = '%s/lib/%s/%s/%s'%(installation_folder, comb_0.split('/')[-1], comb_1.split('/')[0], os.path.split(file_url)[-1])
          if (not os.path.isfile(file_output)) and (any(x in file_url for x in filters)):
             files_urls.append(file_url)
             output_files.append(file_output)
@@ -256,12 +258,15 @@ def installation():
       # Add the installation folder
       replace_text(installation_folder+"/python_codes/%s.py"%master, "installation_path = ''", "installation_path = '%s'"%installation_folder)
 
-      print('Downloading hst1pass...\n')
-      get_hst1pass(installation_folder, repo = 'https://www.stsci.edu/~jayander')
+      if not os.path.exists("./fortran_codes/hst1pass_GH.F"):
+         print('Downloading hst1pass...\n')
+         get_hst1pass(installation_folder, repo = 'https://www.stsci.edu/~jayander')
 
       print('The installation needs to compile two Fortran routines.')
+      print('There are known issues with very recent compilers.')
+      print('We recommend to use gfortran version 8 or lower.')
       print('By default, the command "gfortran" will be executed.')
-      compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler if you wish.\n') or "gfortran"
+      compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler command if you wish.\n') or "gfortran"
 
       print('\nCompiling Fortran modules...\n')
 
@@ -274,7 +279,7 @@ def installation():
          print('\nINSTALLATION ABORTED!\n')
          sys.exit(1)
 
-      get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~jayander', libs = ['STDPSFs', 'STDGDCs'], filters = ['F555W','F606W','F775W','F814W','F850LP'], instrument = ['ACSWFC', 'ACSHRC', 'WFC3UV'])
+      get_psfs_gd_libraries(installation_folder, repo = 'https://www.stsci.edu/~jayander/HST1PASS/LIB', libs = ['/PSFs/STDPSFs', '/GDCs/STDGDCs'], filters = ['F555W','F606W','F775W','F814W','F850LP'], instrument = ['ACSWFC', 'ACSHRC', 'WFC3UV'])
       
       print('\n\nThe installation can set an alias in your .bash_profile or .bashrc file for %s.'%master)
       print('This would allow you to run %s from anywere in your computer.\n'%master)
