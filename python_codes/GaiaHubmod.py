@@ -926,7 +926,7 @@ def applied_pert(XYmqxyrd_filename):
 
 def get_fmin(i_exptime):
    """
-   This routine returns the best value for FMIN to be used in hst1pass execution based on the integration time
+   This routine returns the best value for FMIN to be used in hst1pass_GH execution based on the integration time
    """
 
    # These are the values for fmin at the given lower_exptime and upper_exptime
@@ -936,17 +936,17 @@ def get_fmin(i_exptime):
    return min(max((int(lower_fmin + (upper_fmin - lower_fmin) * (i_exptime - lower_exptime) / (upper_exptime - lower_exptime)), 1000)), 10000)
 
 
-def hst1pass_multiproc_run(args):
+def hst1pass_GH_multiproc_run(args):
    """
-   This routine pipes hst1pass into multiple threads.
+   This routine pipes hst1pass_GH into multiple threads.
    """
 
-   return hst1pass(*args)
+   return hst1pass_GH(*args)
 
 
-def hst1pass(HST_path, exec_path, obs_id, HST_image, force_fmin, force_hst1pass, verbose):
+def hst1pass_GH(HST_path, exec_path, obs_id, HST_image, force_fmin, force_hst1pass, verbose):
    """
-   This routine will execute hst1pass Fortran routine using the correct arguments.
+   This routine will execute hst1pass_GH Fortran routine using the correct arguments.
    """
 
    #Define HST servicing missions times
@@ -1004,7 +1004,7 @@ def hst1pass(HST_path, exec_path, obs_id, HST_image, force_fmin, force_hst1pass,
       if os.path.isfile(psf_filename) and os.path.isfile(gdc_filename):
          pert_grid = 5
          while not applied_pert(XYmqxyrd_filename) and (pert_grid > 0):
-            bashCommand = "%s/fortran_codes/hst1pass.e HMIN=5 FMIN=%s PMAX=999999 GDC=%s PSF=%s PERT%i=AUTO OUT=XYmqxyrd OUTDIR=%s %s"%(exec_path, fmin, gdc_filename, psf_filename, pert_grid, output_dir, HST_image_filename)
+            bashCommand = "%s/fortran_codes/hst1pass_GH.e HMIN=5 FMIN=%s PMAX=999999 GDC=%s PSF=%s PERT%i=AUTO OUT=XYmqxyrd OUTDIR=%s %s"%(exec_path, fmin, gdc_filename, psf_filename, pert_grid, output_dir, HST_image_filename)
 
             process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -1024,9 +1024,9 @@ def hst1pass(HST_path, exec_path, obs_id, HST_image, force_fmin, force_hst1pass,
          print('Skipping %s.'%HST_image)
 
 
-def launch_hst1pass(flc_images, HST_obs_to_use, HST_path, exec_path, force_fmin = None, force_hst1pass = True, verbose = True, n_processes = 1):
+def launch_hst1pass_GH(flc_images, HST_obs_to_use, HST_path, exec_path, force_fmin = None, force_hst1pass = True, verbose = True, n_processes = 1):
    """
-   This routine will launch hst1pass routine in parallel or serial 
+   This routine will launch hst1pass_GH routine in parallel or serial 
    """
    from multiprocessing import Pool, cpu_count
    
@@ -1041,12 +1041,12 @@ def launch_hst1pass(flc_images, HST_obs_to_use, HST_path, exec_path, force_fmin 
    
    if (len(args) > 1) and (n_processes != 1):
       pool = Pool(min(n_processes, len(args)))
-      pool.map(hst1pass_multiproc_run, args)
+      pool.map(hst1pass_GH_multiproc_run, args)
       pool.close()
    
    else:
       for arg in args:
-         hst1pass_multiproc_run(arg)
+         hst1pass_GH_multiproc_run(arg)
 
    remove_file('LOG.psfperts.fits')
    remove_file('fort.99')
@@ -1098,9 +1098,9 @@ def check_mat(mat_filename, iteration, min_stars_alignment = 100, alpha = 0.01, 
    return valid
 
 
-def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_image_filename, lnk_filename, mat_filename, amp_filename, exec_path, date_reference_second_epoch, only_use_members, rewind_stars, force_pixel_scale, force_max_separation, force_use_sat, fix_mat, force_wcs_search_radius, min_stars_alignment, verbose, previous_xym2pm, mat_plots, no_amplifier_based, min_stars_amp, use_mean):
+def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_image_filename, lnk_filename, mat_filename, amp_filename, exec_path, date_reference_second_epoch, only_use_members, rewind_stars, force_pixel_scale, force_max_separation, force_use_sat, fix_mat, force_wcs_search_radius, min_stars_alignment, verbose, previous_xym2pm, mat_plots, no_amplifier_based, min_stars_amp, use_mean):
    """
-   This routine will execute xym2pm_Gaia Fortran routine using the correct arguments.
+   This routine will execute xym2pm_GH Fortran routine using the correct arguments.
    """
 
    hdul = fits.open(HST_image_filename)
@@ -1168,7 +1168,7 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
       else:
          use_amp = ''
 
-      bashCommand = "%s/fortran_codes/xym2pm_Gaia.e %s %s RACEN=%f DECEN=%f XCEN=5000.0 YCEN=5000.0 PSCL=%s SIZE=10000 DISP=%.1f NMIN=%i TIMEREF=%s%s%s%s%s%s"%(exec_path, Gaia_HST_table_filename, HST_image_filename, ra_cent, dec_cent, pixel_scale, max_separation, min_stars_alignment, timeref, time, use_sat, use_mat, use_brute, use_amp)
+      bashCommand = "%s/fortran_codes/xym2pm_GH.e %s %s RACEN=%f DECEN=%f XCEN=5000.0 YCEN=5000.0 PSCL=%s SIZE=10000 DISP=%.1f NMIN=%i TIMEREF=%s%s%s%s%s%s"%(exec_path, Gaia_HST_table_filename, HST_image_filename, ra_cent, dec_cent, pixel_scale, max_separation, min_stars_alignment, timeref, time, use_sat, use_mat, use_brute, use_amp)
 
       process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       output, error = process.communicate()
@@ -1216,7 +1216,7 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
          lnk['relative_hst_gaia_pmra'] = -(lnk.x_gaia - lnk.xhst_gaia) * pixel_scale_mas / t_baseline
          lnk['relative_hst_gaia_pmdec'] = (lnk.y_gaia - lnk.yhst_gaia) * pixel_scale_mas / t_baseline
 
-         # Notice the 1e3. xym2pm_Gaia.e takes the error in mas but returns it in arcsec.
+         # Notice the 1e3. xym2pm_GH.e takes the error in mas but returns it in arcsec.
          lnk['relative_hst_gaia_pmra_error'] = eradec_hst / t_baseline
          lnk['relative_hst_gaia_pmdec_error'] = eradec_hst / t_baseline
          lnk['gaia_dra_uncertaintity'] = 1e3 * lnk.era_gaia / t_baseline
@@ -1246,18 +1246,18 @@ def xym2pm_Gaia(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_im
    return match
 
 
-def xym2pm_Gaia_multiproc(args):
+def xym2pm_GH_multiproc(args):
    """
-   This routine pipes xym2pm_Gaia into multiple threads.
+   This routine pipes xym2pm_GH into multiple threads.
    """
 
-   return xym2pm_Gaia(*args)
+   return xym2pm_GH(*args)
 
 
-def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, ask_user_stop = False, max_iterations = 10, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
+def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_mean = 'wmean', no_plots = False, verbose = True, quiet = False, ask_user_stop = False, max_iterations = 10, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
 
    """
-   This routine will launch xym2pm_Gaia Fortran routine in parallel or serial using the correct arguments.
+   This routine will launch xym2pm_GH Fortran routine in parallel or serial using the correct arguments.
    """
    from multiprocessing import Pool, cpu_count
 
@@ -1333,12 +1333,12 @@ def launch_xym2pm_Gaia(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST
          args.append((iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_image_filename, lnk_filename, mat_filename, amp_filename, exec_path, date_reference_second_epoch, only_use_members, rewind_stars, force_pixel_scale, force_max_separation, force_use_sat, fix_mat, force_wcs_search_radius, min_stars_alignment, verbose, previous_xym2pm, mat_plots, no_amplifier_based_inuse, min_stars_amp, use_mean))
 
       if (len(args) > 1) and (n_processes != 1):
-         lnks = pool.map(xym2pm_Gaia_multiproc, args)
+         lnks = pool.map(xym2pm_GH_multiproc, args)
 
       else:
          lnks = []
          for arg in args:
-            lnks.append(xym2pm_Gaia_multiproc(arg))
+            lnks.append(xym2pm_GH_multiproc(arg))
 
       lnks = pd.concat(lnks, sort=True)
 
