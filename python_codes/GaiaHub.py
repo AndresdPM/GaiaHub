@@ -44,7 +44,7 @@ def gaiahub(argv):
    parser.add_argument('--max_gmag', type=float, default = 21.5, help='Fainter G magnitude')
 
    # Gaia options
-   parser.add_argument('--source_table', type = str, default = 'gaiaedr3.gaia_source', help='Gaia source table. Default is gaiaedr3.gaia_source.')
+   parser.add_argument('--source_table', type = str, default = 'gaiadr3.gaia_source', help='Gaia source table. Default is gaiaedr3.gaia_source.')
    parser.add_argument('--save_individual_queries', action='store_true', help='If True, the code will save the individual queries.')
    parser.add_argument('--sigma_flux_excess_factor', type=float, default=3., help='Sigma used for clipping in flux_excess_factor. Default is 3.')
    parser.add_argument('--only_5p_solutions', action='store_true', help='If True, only 5p solution stars will be considered as "good" sources.')
@@ -114,7 +114,7 @@ def gaiahub(argv):
    gh.remove_file(args.exec_path)
    os.symlink(installation_path, args.exec_path)
 
-   astrometric_cols = 'l, b, ra, ra_error, dec, dec_error, parallax, parallax_error, pmra, pmra_error, pmdec, pmdec_error, dr2_radial_velocity, dr2_radial_velocity_error, ra_dec_corr, ra_parallax_corr, ra_pmra_corr, ra_pmdec_corr, dec_parallax_corr, dec_pmra_corr, dec_pmdec_corr, parallax_pmra_corr, parallax_pmdec_corr, pmra_pmdec_corr'
+   astrometric_cols = 'l, b, ra, ra_error, dec, dec_error, parallax, parallax_error, pmra, pmra_error, pmdec, pmdec_error, radial_velocity, radial_velocity_error, ra_dec_corr, ra_parallax_corr, ra_pmra_corr, ra_pmdec_corr, dec_parallax_corr, dec_pmra_corr, dec_pmdec_corr, parallax_pmra_corr, parallax_pmdec_corr, pmra_pmdec_corr'
 
    photometric_cols = 'phot_g_mean_flux, phot_g_mean_mag AS gmag, (1.086*phot_g_mean_flux_error/phot_g_mean_flux) AS gmag_error, phot_bp_mean_mag AS bpmag, (1.086*phot_bp_mean_flux_error/phot_bp_mean_flux) AS bpmag_error, phot_rp_mean_mag AS rpmag, (1.086*phot_rp_mean_flux_error/phot_rp_mean_flux) AS rpmag_error, bp_rp, sqrt( power( (1.086*phot_bp_mean_flux_error/phot_bp_mean_flux), 2) + power( (1.086*phot_rp_mean_flux_error/phot_rp_mean_flux), 2) ) as bp_rp_error'
 
