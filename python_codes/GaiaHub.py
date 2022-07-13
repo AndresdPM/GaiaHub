@@ -67,7 +67,7 @@ def gaiahub(argv):
    parser.add_argument('--use_members', action='store_true', help='Whether to use only member stars for the epochs alignment or to use all available stars.')
    parser.add_argument('--preselect_cmd', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the color-magnitude diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contamination from non-member stars.')
    parser.add_argument('--preselect_pm', action='store_true', help='If "--use_members" is in use, it enables the user to manually select member stars in the vector-point diagram prior to the automatic selection in the PM space. It helps when the method does not converge due to contamination from non-member stars, or when there are a significant amount of contaminants.')
-   parser.add_argument('--clipping_prob_pm', type=float, default=3, help='Ratio used for clipping in PM when selecting members. Default is 0.95.')
+   parser.add_argument('--clipping_prob_pm', type=float, default=3, help='Sigma level for clipping in PM when selecting members. Default is 3.')
    parser.add_argument('--ask_user_stop', action='store_true', help='It ask the user whether to continue with the next iteration instead of continuing until convergence is reached. It only works when "--use_only_good_gaia" or "--rewind_stars" are in use. It can be useful when convergence fails.')
    parser.add_argument('--max_iterations', type=int, default = 10, help='Maximum number of allowed iterations before convergence. Default 10.')
    parser.add_argument('--pm_n_components', type=int, default=1, help='Number of Gaussian components for pm and parallax clustering. Default is 1.')
