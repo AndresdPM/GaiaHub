@@ -2,7 +2,7 @@
 GaiaHub is a Python/Fortran tool that computes proper motions combining data from Gaia and the Hubble Space Telescope.
 
 ## License and Referencing
-GaiaHub and its documentation are released under a BSD 2-clause license. GaiaHub is freely available and you can freely modify, extend, and improve the GaiaHub source code. However, if you use it for published research, you are requested to cite del Pino et al. 2022 (ApJ submitted), where the method is described.
+GaiaHub and its documentation are released under a BSD 2-clause license. GaiaHub is freely available and you can freely modify, extend, and improve the GaiaHub source code. However, if you use it for published research, you are requested to cite [del Pino et al. 2022](https://ui.adsabs.harvard.edu/abs/2022ApJ...933...76D/abstract)  where the method is described.
 
 ## Features
 
