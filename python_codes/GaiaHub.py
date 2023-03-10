@@ -166,13 +166,14 @@ def gaiahub(argv):
    Plot results and find Gaia stars within HST fields
    """
    obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, use_only_good_gaia = args.use_only_good_gaia,  min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
-
-   if (obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment).any() and (not obs_table.empty):
-
+   
+   print('Warning: The calculation of number of Gaia stars within the HST field is not working at the moment.')
+   # if (obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment).any() and (not obs_table.empty):
+   if not obs_table.empty:
       """
       Select only observations with enough number of stars
       """
-      obs_table = obs_table.loc[obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment, :]
+      # obs_table = obs_table.loc[obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment, :]
 
       """
       Ask whether the user wish to download the available HST images 
