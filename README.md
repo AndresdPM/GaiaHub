@@ -44,8 +44,8 @@ $ gaiaHub --help
 
 For more examples please see [del Pino et al. 2022](https://ui.adsabs.harvard.edu/abs/2022ApJ...933...76D/abstract) and the Documentation file (Documentation_v1.pdf).
 
-## Notes on Version 1.0.1
+## Notes on Version 1.1.0
 
-- Fixed the installer.
-- Included hst1pass_GH.F.
-- Fixed the list of python dependencies.
+- Fixed bug: GaiaHub will now not download HAP images.
+- New statistics added through the "---use_stat" option.
+- New iterative sigma-clipped method to obtain the absolute reference frame.
