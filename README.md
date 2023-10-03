@@ -1,4 +1,6 @@
-<img align="right" width="100" height="100" src = https://github.com/AndresdPM/GaiaHub/assets/63738265/baae8350-aa15-4aec-8325-fa8d6f7d965f>
+<img align="right" width="200" src = https://github.com/AndresdPM/GaiaHub/assets/63738265/baae8350-aa15-4aec-8325-fa8d6f7d965f>
+
+<p class="text-right"><!-- text goes here --></p>
 
 Credit: Zili Shen, Astrobites. ESA.
 
