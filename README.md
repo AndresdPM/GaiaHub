@@ -1,4 +1,4 @@
-![gaiaHub_logo_crop](https://github.com/AndresdPM/GaiaHub/assets/63738265/baae8350-aa15-4aec-8325-fa8d6f7d965f)
+<img align="right" width="100" height="100" ![gaiaHub_logo_crop](https://github.com/AndresdPM/GaiaHub/assets/63738265/baae8350-aa15-4aec-8325-fa8d6f7d965f)>
 
 Credit: Zili Shen, Astrobites. ESA.
 
