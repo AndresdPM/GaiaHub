@@ -1,4 +1,5 @@
 <img align="right" width="200" src = [logo](https://github.com/AndresdPM/GaiaHub/assets/63738265/55333fcc-1d66-43d1-82fe-5439b5f6664a)>
+
 ![gaiaHub_logo_crop](https://github.com/AndresdPM/GaiaHub/assets/63738265/a38d2770-7105-4fde-8374-a85b83687ec8)
 
 # GaiaHub
