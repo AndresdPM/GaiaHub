@@ -819,9 +819,6 @@ def pm_cleaning_GMM_recursive(table, vars, errvars, alt_table = None, data_0 = N
 
       clust = table.loc[:, vars+errvars+['clustering_data']]
 
-      #print('CLUST')
-      #print(table)
-
       if iteration > 3:
          data_0 = None
 
