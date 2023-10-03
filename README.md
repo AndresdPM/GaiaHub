@@ -1,7 +1,7 @@
 <p align="center">
-<img width="250" src = "https://github.com/AndresdPM/GaiaHub/assets/63738265/a38d2770-7105-4fde-8374-a85b83687ec8" hspace="10">
+<img width="250" src = "https://github.com/AndresdPM/GaiaHub/assets/63738265/2d551856-bfd3-4fe0-bc8c-2c4c4cd51460" hspace="10">
 </p>
-  
+
 # GaiaHub
 
 GaiaHub is a Python/Fortran tool that computes proper motions combining data from Gaia and the Hubble Space Telescope.
