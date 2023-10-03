@@ -1,5 +1,4 @@
-<img align="right" width="200" src = https://github.com/AndresdPM/GaiaHub/assets/63738265/baae8350-aa15-4aec-8325-fa8d6f7d965f>
-*Credit: Zili Shen, Astrobites. ESA.*
+<img align="right" width="200" src = [logo](https://github.com/AndresdPM/GaiaHub/assets/63738265/55333fcc-1d66-43d1-82fe-5439b5f6664a)>
 
 # GaiaHub
 
