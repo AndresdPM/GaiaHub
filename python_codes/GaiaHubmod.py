@@ -1125,7 +1125,7 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
 
    pixel_scale_mas = 1e3 * pixel_scale
 
-   if (iteration > 0) & (rewind_stars):
+   if ((iteration > 1) & (rewind_stars) & (only_use_members)) | ((iteration > 0) & (rewind_stars) & (~only_use_members)):
       align_var = ['ra', 'ra_error', 'dec', 'dec_error', 'hst_gaia_pmra_%s'%use_stat, 'hst_gaia_pmra_%s_error'%use_stat, 'hst_gaia_pmdec_%s'%use_stat, 'hst_gaia_pmdec_%s_error'%use_stat, 'gmag', 'use_for_alignment']
    else:
       align_var = ['ra', 'ra_error', 'dec', 'dec_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error', 'gmag', 'use_for_alignment']
@@ -1138,7 +1138,7 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
       f.close()
 
       # Here it goes the executable line. Input values can be fine-tuned here
-      if (iteration > 0) & (rewind_stars):
+      if ((iteration > 1) & (rewind_stars) & (only_use_members)) | ((iteration > 0) & (rewind_stars) & (~only_use_members)):
          time = ' TIME=%s'%str(round(Time(t_max, format='mjd').jyear, 3))
       else:
          time = ''
@@ -1482,8 +1482,8 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
          plt.close()
          fig, (ax1, ax2) = plt.subplots(2, 1, sharex = True)
 
-         ax1.plot(np.arange(iteration-2)+1, np.abs(pm_diff_evo[:,0]), '-', label = r'$\Delta(\mu_{\alpha *})$')
-         ax1.plot(np.arange(iteration-2)+1, np.abs(pm_diff_evo[:,1]), '-', label = r'$\Delta(\mu_{\delta})$')
+         ax1.plot(np.arange(iteration-1)+1, np.abs(pm_diff_evo[:,0]), '-', label = r'$\Delta(\mu_{\alpha *})$')
+         ax1.plot(np.arange(iteration-1)+1, np.abs(pm_diff_evo[:,1]), '-', label = r'$\Delta(\mu_{\delta})$')
 
          ax2.plot(np.arange(iteration), hst_gaia_pm_lsqt_evo[:,0], '-', label = r'RMS$(\mu_{\alpha *, HST+Gaia} - \mu_{\alpha *, Gaia})$')
          ax2.plot(np.arange(iteration), hst_gaia_pm_lsqt_evo[:,1], '-', label = r'RMS$(\mu_{\delta, HST+Gaia} - \mu_{\delta, Gaia})$')
@@ -1499,7 +1499,7 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
          ax1.legend(shadow=True, fancybox=True)
          ax2.legend(shadow=True, fancybox=True)
 
-         plt.savefig('%s_PM_RMS_iterations.pdf'%plot_name, bbox_inches='tight')
+         plt.savefig('%s_PM_RMS_iterations_%s.pdf'%(plot_name, use_stat), bbox_inches='tight')
          plt.close()
       except:
          pass
