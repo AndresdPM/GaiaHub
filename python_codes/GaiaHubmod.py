@@ -1353,9 +1353,9 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
       lnks_averaged = lnks.groupby(lnks.index).apply(weighted_avg_err)
 
       # Gaia positional errors have to be added in quadrature
-      for use_stat in ['mean', 'wmean', 'median']:
-         lnks_averaged['relative_hst_gaia_pmra_%s_error'%use_stat] = np.sqrt(lnks_averaged['relative_hst_gaia_pmra_%s_error'%use_stat]**2 + lnks_averaged['gaia_dra_uncertaintity_mean']**2)
-         lnks_averaged['relative_hst_gaia_pmdec_%s_error'%use_stat] = np.sqrt(lnks_averaged['relative_hst_gaia_pmdec_%s_error'%use_stat]**2 + lnks_averaged['gaia_ddec_uncertaintity_mean']**2)
+      for use_stat_i in ['mean', 'wmean', 'median']:
+         lnks_averaged['relative_hst_gaia_pmra_%s_error'%use_stat_i] = np.sqrt(lnks_averaged['relative_hst_gaia_pmra_%s_error'%use_stat_i]**2 + lnks_averaged['gaia_dra_uncertaintity_mean']**2)
+         lnks_averaged['relative_hst_gaia_pmdec_%s_error'%use_stat_i] = np.sqrt(lnks_averaged['relative_hst_gaia_pmdec_%s_error'%use_stat_i]**2 + lnks_averaged['gaia_ddec_uncertaintity_mean']**2)
 
       # Remove redundant columns
       lnks_averaged = lnks_averaged.drop(columns=[col for col in lnks_averaged if col.startswith('gaia') or (col.startswith('q_hst') and 'wmean' in col)])
