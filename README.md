@@ -1,4 +1,5 @@
-# GaiaHub ![gaiaHub_logo_crop](https://github.com/AndresdPM/GaiaHub/assets/63738265/01703109-fe29-4fc8-b786-5414d876c1c8)
+# GaiaHub 
+![gaiaHub_logo_crop](https://github.com/AndresdPM/GaiaHub/assets/63738265/01703109-fe29-4fc8-b786-5414d876c1c8)
 GaiaHub is a Python/Fortran tool that computes proper motions combining data from Gaia and the Hubble Space Telescope.
 
 ## License and Referencing
