@@ -1312,21 +1312,22 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
             Gaia_HST_table = find_stars_to_align(Gaia_HST_table, HST_image_filename)
 
             n_field_stars = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'].count()
-            u_field_stars = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'].sum()
-            
-            # We assume that the some parts of the image can have slightly lower stars density than others.
-            # Therefore, we require 5 times the number of stars per amplifier in the entire image instead of 4.
-            if (n_field_stars < min_stars_amp*5) and (no_amplifier_based == False):
-               print('WARNING: Not enough stars in %s as to separate amplifiers. Only one channel will be used.'%HST_image)
-               no_amplifier_based_inuse = True
-            elif (n_field_stars >= min_stars_amp*5) and (no_amplifier_based == False):
-               no_amplifier_based_inuse = False
-            else:
-               no_amplifier_based_inuse = True
 
-            if (u_field_stars < min_stars_alignment):
-               print('WARNING: Not enough member stars in %s. Using all the stars in the field.'%HST_image)
-               Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'] = True
+         u_field_stars = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'].sum()
+
+         # We assume that the some parts of the image can have slightly lower stars density than others.
+         # Therefore, we require 5 times the number of stars per amplifier in the entire image instead of 4.
+         if (u_field_stars < min_stars_amp*5) and (no_amplifier_based == False):
+            print('WARNING: Not enough stars for alignment in %s as to separate amplifiers. Only one channel will be used.'%HST_image)
+            no_amplifier_based_inuse = True
+         elif (u_field_stars >= min_stars_amp*5) and (no_amplifier_based == False):
+            no_amplifier_based_inuse = False
+         else:
+            no_amplifier_based_inuse = True
+
+         if (u_field_stars < min_stars_alignment):
+            print('WARNING: Not enough member stars in %s. Using all the stars in the field.'%HST_image)
+            Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'] = True
 
          Gaia_HST_table_field = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), :]
 
