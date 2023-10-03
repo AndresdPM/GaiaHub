@@ -1,4 +1,4 @@
-<img align="right" width="300" src = "https://github.com/AndresdPM/GaiaHub/assets/63738265/a38d2770-7105-4fde-8374-a85b83687ec8" hspace="50">
+<img align="right" width="250" src = "https://github.com/AndresdPM/GaiaHub/assets/63738265/a38d2770-7105-4fde-8374-a85b83687ec8" hspace="30">
   
 # GaiaHub
 
