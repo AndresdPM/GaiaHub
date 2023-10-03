@@ -1,5 +1,5 @@
 
-<img align="left" width="200" src = "https://github.com/AndresdPM/GaiaHub/assets/63738265/a38d2770-7105-4fde-8374-a85b83687ec8">
+<img align="center" width="300" src = "https://github.com/AndresdPM/GaiaHub/assets/63738265/a38d2770-7105-4fde-8374-a85b83687ec8">
 
   
 # GaiaHub
