@@ -877,6 +877,7 @@ def pm_cleaning_GMM_recursive(table, vars, errvars, alt_table = None, data_0 = N
       plt.subplots_adjust(wspace=0.3, hspace=0.1)
 
       plt.savefig(plot_name, bbox_inches='tight')
+      plt.close(fig)
 
    if verbose:
       print('')
@@ -1209,7 +1210,8 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
          # Positional and mag error is know to be proportional to the QFIT parameter.
          eradec_hst = lnk.q_hst.copy()
          # Assign the maximum (worst) QFIT parameter to saturated stars.
-         eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.mean()+3*lnk.q_hst.std()}).copy()
+         eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.mean()+5*lnk.q_hst.std()}).copy()
+
          # 0.8 seems reasonable, although this may be tuned through an empirical function.
          eradec_hst *= pixel_scale_mas * 0.8
 
@@ -1316,8 +1318,8 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
          u_field_stars = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'].sum()
 
          # We assume that the some parts of the image can have slightly lower stars density than others.
-         # Therefore, we require 5 times the number of stars per amplifier in the entire image instead of 4.
-         if (u_field_stars < min_stars_amp*5) and (no_amplifier_based == False):
+         # Therefore, we require 4.5 times the number of stars per amplifier in the entire image instead of 4.
+         if (u_field_stars < min_stars_amp*4.5) and (no_amplifier_based == False):
             print('WARNING: Not enough stars for alignment in %s as to separate amplifiers. Only one channel will be used.'%HST_image)
             no_amplifier_based_inuse = True
          elif (u_field_stars >= min_stars_amp*5) and (no_amplifier_based == False):
@@ -1373,32 +1375,8 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
       if only_use_members:
          if (preselect_cmd == True) and (no_plots == False) and (quiet == False):
             if (iteration == 0):
-               # Select stars in theCMD
-               hst_filters = [col for col in lnks_averaged.columns if ('F' in col) & ('error' not in col) & ('std' not in col) & ('_mean' not in col)]
-               hst_filters.sort()
+                  Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] =  manual_select_from_cmd(Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'bp_rp'].rename('BP-RP'), Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag'].rename('Gmag'))
 
-               min_HST_HST_stars = 0.9*len(Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat]].dropna())
-               
-               cmd_sel = False
-               if len(hst_filters) >= 2:
-                  for f1, f2 in itertools.combinations(hst_filters, 2):
-                     if (len((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, f1] - Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, f2]).dropna()) >=  min_HST_HST_stars):
-                        Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] =  manual_select_from_cmd((Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment,hst_filters[0]]-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]]).rename('%s - %s'%(hst_filters[0], hst_filters[1])), Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, hst_filters[1]])
-                        cmd_sel = True
-                        break
-
-               if (len(hst_filters) == 1) or not cmd_sel:
-                  for cmd_filter in hst_filters:
-                     if int(re.findall(r'\d+', cmd_filter)[0]) <= 606:
-                        HST_Gaia_color = (Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, cmd_filter]-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag']).rename('%s - Gmag'%cmd_filter)
-                     else:
-                        HST_Gaia_color = (Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag']-Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, cmd_filter]).rename('Gmag - %s'%cmd_filter)
-
-                     Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, '%s_clustering_data_cmd'%cmd_filter] =  manual_select_from_cmd(HST_Gaia_color, Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'gmag'].rename('Gmag'))
-
-                  cmd_clustering_filters = [col for col in Gaia_HST_table.columns if '_clustering_data_cmd' in col]
-                  Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] = (Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, cmd_clustering_filters] == True).any(axis = 1)
-                  Gaia_HST_table.drop(columns = cmd_clustering_filters, inplace = True)
          else:
             Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_cmd'] = True
 
@@ -1440,11 +1418,11 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
          pmdec_diff_evo.append(np.nanmean(pmdec_evo[-1] - pmdec_evo[-2]))
          
          # If rewind_stars is True, the code will converge when the difference between interations is smaller than the error in PMs
-         threshold = np.nanmean(Gaia_HST_table.loc[id_pms, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].mean())*1e-1
+         threshold = np.nanmean(Gaia_HST_table.loc[id_pms, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].mean())*1e-2
 
          print('PM variation = (%.4e, %.4e)  m.a.s.' %(pmra_diff_evo[-1], pmdec_diff_evo[-1]))
 
-         if rewind_stars:
+         if (rewind_stars) & (iteration > 1):
             print('Threshold = %.4e  m.a.s.'%threshold)
             convergence = (np.abs(pmra_diff_evo[-1]) <= threshold) & (np.abs(pmdec_diff_evo[-1]) <= threshold)
          else:
@@ -1529,7 +1507,7 @@ def find_stars_to_align(stars_catalog, HST_image_filename):
       wcs = WCS(hdu[ii].header)
       footprint_chip = wcs.calc_footprint()
 
-      #We add 10 arcsec of HST pointing error to the footprint to ensure we have all the stars.
+      # We add 10 arcsec of HST pointing error to the footprint to ensure we have all the stars.
       center_chip = np.mean(footprint_chip, axis = 0)
 
       footprint_chip[np.where(footprint_chip[:,0] < center_chip[0]),0] -= 0.0028 / np.cos(np.deg2rad(center_chip[1]))
@@ -1572,9 +1550,9 @@ def weighted_avg_err(table):
    avg_error = x_i.std().add_suffix('_mean_error')/np.sqrt(len(x_i))
    std = x_i.std().add_suffix('_std')
 
-   #The formula is 1.25*sigma/sqrt(N) for medians of normal distributions. It gets better from there. This is the upper limmit of error.
-   median_err = (1.25404*table.std()/np.sqrt(table.count())).add_suffix('_median_error')
-   median = table.median().add_suffix('_median')
+   # The formula is 1.25*sigma/sqrt(N) for medians of normal distributions. It gets better from there. This is the upper limmit of error.
+   median_err = (1.25404*x_i.std()/np.sqrt(len(x_i))).add_suffix('_median_error')
+   median = x_i.median().add_suffix('_median')
 
    return pd.concat([weighted_avg, weighted_avg_error, avg, avg_error, median, median_err, std])
 
@@ -1584,16 +1562,24 @@ def absolute_pm(table, n_components = 1, covariance_type = 'full', clipping_prob
    This routine computes the absolute PM just adding the absolute differences between Gaia and HST PMs.
    """   
 
+   # We try to select only good Gaia stars to derive the absolute reference frame:
+   Good_gaia = table.clean_label == True
+
    for use_stat in ['mean', 'wmean', 'median']:
 
-      pm_differences = table.loc[:, ['pmra', 'pmdec']] - table.loc[:, ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat]].values
-      pm_differences_error = np.sqrt(table.loc[:, ['pmra_error', 'pmdec_error']]**2 + table.loc[:, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].values**2)
+      # We try to select only good Gaia-HST stars to derive the absolute reference frame:
+      hst_gaia_error_threshold = table.loc[:, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].quantile(q = 0.85)
+      Good_hst_gaia = (table.loc[:, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]] <= hst_gaia_error_threshold).all(axis = 1)
+      Good_stars = Good_gaia & Good_hst_gaia
+
+      pm_differences = table.loc[Good_stars, ['pmra', 'pmdec']] - table.loc[Good_stars, ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat]].values
+      pm_differences_error = np.sqrt(table.loc[Good_stars, ['pmra_error', 'pmdec_error']]**2 + table.loc[Good_stars, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].values**2)
 
       ref = pm_differences.join(pm_differences_error)
       ref['clustering_data'] = True
 
       try:
-         pm_clustering = pm_cleaning_GMM_recursive(ref, ['pmra', 'pmdec'], ['pmra_error', 'pmdec_error'], data_0 = pm_differences.mean(axis = 0), n_components = n_components, covariance_type = 'full', clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i_absolute_%s.png'%(plot_name, iteration, use_stat))
+         pm_clustering = pm_cleaning_GMM_recursive(ref, ['pmra', 'pmdec'], ['pmra_error', 'pmdec_error'], data_0 = pm_differences.mean(axis = 0), n_components = n_components, covariance_type = 'full', clipping_prob = 3, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i_absolute_%s.png'%(plot_name, iteration, use_stat))
       except:
          print('Something went wrong... using all the stars to measure the %s absolute reference frame.'%use_stat)
          pm_clustering = [True]*len(ref)
@@ -1602,6 +1588,9 @@ def absolute_pm(table, n_components = 1, covariance_type = 'full', clipping_prob
 
       table['hst_gaia_pmra_%s'%use_stat], table['hst_gaia_pmdec_%s'%use_stat] = table['relative_hst_gaia_pmra_%s'%use_stat] + pm_differences['pmra_%s'%use_stat], table['relative_hst_gaia_pmdec_%s'%use_stat] + pm_differences['pmdec_%s'%use_stat]
       table['hst_gaia_pmra_%s_error'%use_stat], table['hst_gaia_pmdec_%s_error'%use_stat] = np.sqrt(table['relative_hst_gaia_pmra_%s_error'%use_stat]**2 + pm_differences['pmra_%s_error'%use_stat]**2), np.sqrt(table['relative_hst_gaia_pmdec_%s_error'%use_stat]**2 + pm_differences['pmdec_%s_error'%use_stat]**2)
+
+      table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] = False
+      table.loc[Good_stars, 'use_for_absolute_ref_frame_%s'%use_stat] = pm_clustering
 
    return table
 
@@ -1655,8 +1644,8 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
    Plot results
    """
    
-   GDR = '(E)DR3'
-   GaiaHub_GDR = 'GaiaHub + %s'%GDR
+   GDR = 'Gaia'
+   GaiaHub_GDR = 'GaiaHub'
    sigma_lims = 3
 
    pmra_lims = [table['hst_gaia_pmra_%s'%use_stat].mean()-sigma_lims*table['hst_gaia_pmra_%s'%use_stat].std(), table['hst_gaia_pmra_%s'%use_stat].mean()+sigma_lims*table['hst_gaia_pmra_%s'%use_stat].std()]
@@ -1720,6 +1709,9 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
 
    fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharex = False, sharey = False, figsize = (10, 3))
    ax1.errorbar(table.pmra, table['hst_gaia_pmra_%s'%use_stat], xerr=table.pmra_error, yerr=table['hst_gaia_pmra_%s_error'%use_stat], fmt = '.', ms=2, color = '0.1', zorder = 1, alpha = 0.5, elinewidth = 0.5)
+
+   ax1.scatter(table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'pmra'], table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'hst_gaia_pmra_%s'%use_stat], s = 4, linewidth = 1, facecolor='g', edgecolor='g', zorder = 2)
+
    ax1.plot([pmra_lims[0], pmra_lims[1]], [pmra_lims[0], pmra_lims[1]], 'r-', linewidth = 0.5)
    ax1.grid()
    ax1.set_xlabel(r'$\mu_{\alpha*, Gaia}$ [m.a.s./yr.]')
@@ -1731,6 +1723,9 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
       pass
 
    ax2.errorbar(table.pmdec, table['hst_gaia_pmdec_%s'%use_stat], xerr=table.pmdec_error, yerr=table['hst_gaia_pmdec_%s_error'%use_stat], fmt = '.', ms=2, color = '0.1', zorder = 1, alpha = 0.5, elinewidth = 0.5)
+
+   ax2.scatter(table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'pmdec'], table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'hst_gaia_pmdec_%s'%use_stat], s = 4, linewidth = 1, facecolor='g', edgecolor='g', zorder = 2)
+
    ax2.plot([pmdec_lims[0], pmdec_lims[1]], [pmdec_lims[0], pmdec_lims[1]], 'r-', linewidth = 0.5)
    ax2.grid()
    ax2.set_xlabel(r'$\mu_{\delta, Gaia}$ [m.a.s./yr.]')
@@ -1742,7 +1737,9 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
       pass
 
    ax3.errorbar(table.pmra - table['hst_gaia_pmra_%s'%use_stat], table.pmdec - table['hst_gaia_pmdec_%s'%use_stat], xerr=np.sqrt(table.pmra_error**2 + table['hst_gaia_pmra_%s_error'%use_stat]**2), yerr=np.sqrt(table.pmdec_error**2 + table['hst_gaia_pmdec_%s_error'%use_stat]**2), fmt = '.', ms=2, color = '0.1', zorder = 1, alpha = 0.5, elinewidth = 0.5)
-   
+
+   ax3.scatter(table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'pmra'] - table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'hst_gaia_pmra_%s'%use_stat], table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat] == True, 'pmdec'] - table.loc[table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat]==True, 'hst_gaia_pmdec_%s'%use_stat], s = 4, facecolor='g', edgecolor='g', zorder = 2, label = 'abs. ref. frame')
+
    ax3.axvline(x=0, color ='r', linewidth = 0.5)
    ax3.axhline(y=0, color ='r', linewidth = 0.5)
 
@@ -1751,6 +1748,7 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
    
    ax3.set_xlabel(r'$\mu_{\alpha*, Gaia}$ - $\mu_{\alpha*, HST + Gaia}$ [m.a.s./yr.]')
    ax3.set_ylabel(r'$\mu_{\delta, Gaia}$ - $\mu_{\delta, HST + Gaia}$ [m.a.s./yr.]')
+   ax3.legend(prop={'size': 8})
 
    plt.subplots_adjust(wspace=0.3, hspace=0.1)
 
@@ -1763,29 +1761,17 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
 
    fig, ax = plt.subplots(1,1, sharex = False, sharey = False, figsize = (5., 5.))
 
-   hst_filters = [col for col in table.columns if ('F' in col) & ('error' not in col) & ('std' not in col) & ('_mean' not in col)]
-   hst_filters.sort()
-   if len(hst_filters) >= 2:
-      name = r'%s - %s'%(hst_filters[0], hst_filters[1])
-      color = (table[hst_filters[0]]-table[hst_filters[1]]).rename(name)
-      mag = table[hst_filters[1]]
-   else:
-      name = r'G - %s'%hst_filters[0]
-      color = (table['gmag']-table[hst_filters[0]]).rename(name)
-      mag = table[hst_filters[0]]
+   ax.plot(table.loc[table.use_for_alignment == False, 'bp_rp'], table.loc[table.use_for_alignment == False, 'gmag'], 'k.', ms=2, alpha = 0.35)
+   ax.plot(table.loc[table.use_for_alignment == True, 'bp_rp'], table.loc[table.use_for_alignment == True, 'gmag'], 'k.', ms=3)
 
-   ax.plot(color[table.use_for_alignment == False], mag[table.use_for_alignment == False], 'k.', ms=2, alpha = 0.35)
-   ax.plot(color[table.use_for_alignment == True], mag[table.use_for_alignment == True], 'k.', ms=2)
-
-   ax.set_xlabel(color.name.replace("_wmean","").replace("_mean",""))
-   ax.set_ylabel(mag.name.replace("_wmean","").replace("_mean",""))
+   ax.set_xlabel('G')
+   ax.set_ylabel('BP-RP')
 
    try:
-      ax.set_xlim(np.nanmin(color)-0.1, np.nanmax(color)+0.1)
-      ax.set_ylim(np.nanmax(mag)+0.25, np.nanmin(mag)-0.25)
+      ax.set_ylim(np.nanmax(table.loc[:, 'gmag'])+0.5, np.nanmin(table.loc[:, 'gmag'])-0.5)
    except:
       pass
-   
+
    ax.grid()
    
    plt.savefig(plot_name_3+ext, bbox_inches='tight')
@@ -2223,11 +2209,19 @@ def get_object_properties(args):
    args.HST_path = args.base_path+'HST/'
    args.Gaia_path = args.base_path+'Gaia/'
    args.Gaia_ind_queries_path = args.Gaia_path+'individual_queries/'
+
+   options = '_%s'%args.use_stat
+   if args.use_members:
+      options += '_members'
+   if args.rewind_stars:
+      options += '_rewind'
+
+   args.GaiaHub_output = args.base_path+'Results%s/'%options
    
-   args.used_HST_obs_table_filename = args.base_path + args.base_file_name+'_used_HST_images.csv'
-   args.HST_Gaia_table_filename = args.base_path + args.base_file_name+'_%s.csv'%args.use_stat
-   args.logfile = args.base_path + args.base_file_name+'_%s.log'%args.use_stat
-   args.queries = args.Gaia_path + args.base_file_name+'_queries.log'
+   args.used_HST_obs_table_filename = args.GaiaHub_output + args.base_file_name+'_used_HST_images.csv'
+   args.HST_Gaia_table_filename = args.GaiaHub_output + args.base_file_name+'_%s.csv'%args.use_stat
+   args.logfile = args.GaiaHub_output + args.base_file_name+'_%s.log'%args.use_stat
+   args.queries = args.GaiaHub_output + args.base_file_name+'_queries.log'
    
    args.Gaia_clean_table_filename = args.Gaia_path + args.base_file_name+'_gaia.csv'
    args.HST_obs_table_filename = args.HST_path + args.base_file_name+'_obs.csv'

@@ -104,13 +104,14 @@ def gaiahub(argv):
    gh.create_dir(args.base_path)
    gh.create_dir(args.HST_path)
    gh.create_dir(args.Gaia_path)
+   gh.create_dir(args.GaiaHub_output)
    if args.save_individual_queries:
       gh.create_dir(args.Gaia_ind_queries_path)
 
    """
    The script tries to load an existing Gaia table, otherwise it will download it from the Gaia archive.
    """
-   installation_path = ''
+   installation_path = '/home/adpm/Software/t1/GaiaHub'
    gh.remove_file(args.exec_path)
    os.symlink(installation_path, args.exec_path)
 
@@ -224,7 +225,7 @@ def gaiahub(argv):
       """
       Call xym2pm_GH
       """
-      Gaia_table_hst, lnks = gh.launch_xym2pm_GH(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_only_good_gaia = args.use_only_good_gaia, min_stars_alignment = args.min_stars_alignment, use_stat = args.use_stat, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, ask_user_stop = args.ask_user_stop, max_iterations = args.max_iterations, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.base_path+'PM_Sel')
+      Gaia_table_hst, lnks = gh.launch_xym2pm_GH(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_only_good_gaia = args.use_only_good_gaia, min_stars_alignment = args.min_stars_alignment, use_stat = args.use_stat, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, ask_user_stop = args.ask_user_stop, max_iterations = args.max_iterations, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.GaiaHub_output+'PM_Sel')
 
       """
       Save Gaia and HST tables
@@ -239,24 +240,26 @@ def gaiahub(argv):
       """
       Print a summary with the location of files
       """
-      logresults = ' RESULTS '.center(82, '-')+'\n - Final table: %s'%args.HST_Gaia_table_filename+'\n - Used HST observations: %s'%args.used_HST_obs_table_filename+'\n'+'-'*82+'\n - A total of %i stars were used.\n'%Gaia_table_hst.use_for_alignment.sum()+' - Average absolute PM of used stars: \n'
+      logresults = ' RESULTS '.center(100, '-')+'\n - Final table: %s'%args.HST_Gaia_table_filename+'\n - Used HST observations: %s'%args.used_HST_obs_table_filename+'\n'+'-'*100+'\n - A total of %i stars were used during the epoch alignment.\n'%Gaia_table_hst.use_for_alignment.sum()+' - Absolute PM of the used stars: \n'
 
       for use_stat in ['wmean', 'mean', 'median']:
          avg_pm = gh.weighted_avg_err(Gaia_table_hst.loc[Gaia_table_hst.use_for_alignment, ['hst_gaia_pmra_%s'%use_stat, 'hst_gaia_pmdec_%s'%use_stat, 'hst_gaia_pmra_%s_error'%use_stat, 'hst_gaia_pmdec_%s_error'%use_stat]])
 
-         logresults += '   %s pmra'%use_stat+' = %s+-%s \n'%(gh.round_significant(avg_pm['hst_gaia_pmra_%s_%s'%(use_stat, use_stat)], avg_pm['hst_gaia_pmra_%s_%s_error'%(use_stat, use_stat)]))+'   %s pmdec'%use_stat+' = %s+-%s \n'%(gh.round_significant(avg_pm['hst_gaia_pmdec_%s_%s'%(use_stat, use_stat)], avg_pm['hst_gaia_pmdec_%s_%s_error'%(use_stat, use_stat)]))
+         logresults += '    - %i stars were used to compute the %s absolute frame:\n'%(Gaia_table_hst['use_for_absolute_ref_frame_%s'%use_stat].sum(), use_stat)
+
+         logresults += '       - %s pmra'%use_stat+' = %s+-%s \n'%(gh.round_significant(avg_pm['hst_gaia_pmra_%s_%s'%(use_stat, use_stat)], avg_pm['hst_gaia_pmra_%s_%s_error'%(use_stat, use_stat)]))+'       - %s pmdec'%use_stat+' = %s+-%s \n'%(gh.round_significant(avg_pm['hst_gaia_pmdec_%s_%s'%(use_stat, use_stat)], avg_pm['hst_gaia_pmdec_%s_%s_error'%(use_stat, use_stat)]))
 
          """
          Plot the results
          """
          if args.no_plots == False:
             try:
-               gh.plot_results(Gaia_table_hst, lnks, drz_images, args.HST_path, avg_pm, use_stat = use_stat, plot_name_1 = args.base_path+args.base_file_name+'_vpd', plot_name_2 = args.base_path+args.base_file_name+'_diff', plot_name_3 = args.base_path+args.base_file_name+'_cmd', plot_name_4 = args.base_path+args.base_file_name+'_footprint', plot_name_5 = args.base_path+args.base_file_name+'_errors_xy', plot_name_6 = args.base_path+args.base_file_name+'_errors_mag', plot_name_7 = args.base_path+args.base_file_name+'_errors_color', ext = '_%s.pdf'%use_stat)
+               gh.plot_results(Gaia_table_hst, lnks, drz_images, args.HST_path, avg_pm, use_stat = use_stat, plot_name_1 = args.GaiaHub_output+args.base_file_name+'_vpd', plot_name_2 = args.GaiaHub_output+args.base_file_name+'_diff', plot_name_3 = args.GaiaHub_output+args.base_file_name+'_cmd', plot_name_4 = args.GaiaHub_output+args.base_file_name+'_footprint', plot_name_5 = args.GaiaHub_output+args.base_file_name+'_errors_xy', plot_name_6 = args.GaiaHub_output+args.base_file_name+'_errors_mag', plot_name_7 = args.GaiaHub_output+args.base_file_name+'_errors_color', ext = '_%s.pdf'%use_stat)
             except:
                print('There was an error when trying to plot the %s quantities...'%use_stat)
                pass
 
-      logresults += '-'*82 + '\n \n Execution ended.\n'
+      logresults += '-'*100 + '\n \n Execution ended.\n'
 
       print('\n')
       print(logresults)
