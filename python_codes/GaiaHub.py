@@ -111,7 +111,7 @@ def gaiahub(argv):
    """
    The script tries to load an existing Gaia table, otherwise it will download it from the Gaia archive.
    """
-   installation_path = '/home/adpm/Software/t1/GaiaHub'
+   installation_path = ''
    gh.remove_file(args.exec_path)
    os.symlink(installation_path, args.exec_path)
 
