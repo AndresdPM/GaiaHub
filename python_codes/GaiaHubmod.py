@@ -1212,8 +1212,8 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
          # Assign the maximum (worst) QFIT parameter to saturated stars.
          eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.mean()+5*lnk.q_hst.std()}).copy()
 
-         # 0.8 seems reasonable, although this may be tuned through an empirical function.
-         eradec_hst *= pixel_scale_mas * 0.8
+         # 0.25 seems reasonable, although this may be tuned through an empirical function.
+         eradec_hst *= pixel_scale_mas * 0.25
 
          lnk['relative_hst_gaia_pmra'] = -(lnk.x_gaia - lnk.xhst_gaia) * pixel_scale_mas / t_baseline
          lnk['relative_hst_gaia_pmdec'] = (lnk.y_gaia - lnk.yhst_gaia) * pixel_scale_mas / t_baseline
