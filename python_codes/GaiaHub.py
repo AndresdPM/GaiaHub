@@ -169,7 +169,6 @@ def gaiahub(argv):
    obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, use_only_good_gaia = args.use_only_good_gaia,  min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
 
    if (not obs_table.empty) and (obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment).any():
-   #if not obs_table.empty:
 
       """
       Select only observations with enough number of stars
