@@ -397,7 +397,7 @@ def use_processors(n_processes):
    """
 
    from multiprocessing import cpu_count
-   
+
    available_processors = cpu_count()
 
    n_processes = n_processes % (available_processors+1)
@@ -788,16 +788,16 @@ def members_prob(table, clf, vars, errvars, clipping_prob = 3, data_0 = None):
    return results
 
 
-def pm_cleaning_GMM_recursive(table, vars, errvars, alt_table = None, data_0 = None, n_components = 1, covariance_type = 'full', clipping_prob = 3, no_plots = True, verbose = True, plot_name = ''):
+def pm_cleaning_GMM_recursive(table, vars, errvars, clustering_data = None, alt_table = None, data_0 = None, n_components = 1, covariance_type = 'full', clipping_prob = 3, no_plots = True, verbose = True, plot_name = ''):
    """
    This routine iteratively find members using a Gaussian mixture model.
    """
    
    table['real_data'] = True
    
-   try:
-      table['clustering_data']
-   except:
+   if clustering_data is not None:
+      table['clustering_data'] = clustering_data
+   else:
       table['clustering_data'] = 1
 
    if alt_table is not None:
@@ -1053,7 +1053,7 @@ def launch_hst1pass_GH(flc_images, HST_obs_to_use, HST_path, exec_path, force_fm
    remove_file('fort.99')
 
 
-def check_mat(mat_filename, iteration, min_stars_alignment = 100, alpha = 0.01, center_tolerance = 1e-3, plots = True, fix_mat = True, clipping_prob = 2, verbose= True):
+def check_mat(mat_filename, iteration, min_stars_alignment = 100, alpha = 0.01, center_tolerance = 1e-3, plots = True, fix_mat = True, clipping_prob = 3, verbose= True):
    """
    This routine will read the transformation file MAT and provide a quality flag based on how Gaussian the transformation is.
    """
@@ -1126,7 +1126,7 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
 
    pixel_scale_mas = 1e3 * pixel_scale
 
-   if ((iteration > 1) & (rewind_stars) & (only_use_members)) | ((iteration > 0) & (rewind_stars) & (~only_use_members)):
+   if ((iteration > 0) & (rewind_stars)):
       align_var = ['ra', 'ra_error', 'dec', 'dec_error', 'hst_gaia_pmra_%s'%use_stat, 'hst_gaia_pmra_%s_error'%use_stat, 'hst_gaia_pmdec_%s'%use_stat, 'hst_gaia_pmdec_%s_error'%use_stat, 'gmag', 'use_for_alignment']
    else:
       align_var = ['ra', 'ra_error', 'dec', 'dec_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error', 'gmag', 'use_for_alignment']
@@ -1139,7 +1139,7 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
       f.close()
 
       # Here it goes the executable line. Input values can be fine-tuned here
-      if ((iteration > 1) & (rewind_stars) & (only_use_members)) | ((iteration > 0) & (rewind_stars) & (~only_use_members)):
+      if (rewind_stars) & (iteration > 0):
          time = ' TIME=%s'%str(round(Time(t_max, format='mjd').jyear, 3))
       else:
          time = ''
@@ -1149,7 +1149,7 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
       else:
          use_sat = ''
 
-      if (fix_mat) and (iteration > 0) and not rewind_stars:
+      if (fix_mat) and (iteration > 0):
          use_mat = " MAT=\"%s\" USEMAT+"%(mat_filename.split('./')[1])
       else:
          use_mat = ''
@@ -1182,10 +1182,12 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
       #Next are threshold rejection values for the MAT files. The alpha is the Shapiro–Wilk statistics. Lower values are more permissive.
       if (iteration > 0) and only_use_members and not rewind_stars:
          alpha = 1e-64
+         center_tolerance = 1e-2
       else:
          alpha = 0
+         center_tolerance = 1e-1
 
-      valid_mat = check_mat(mat_filename, iteration, min_stars_alignment, alpha = alpha, center_tolerance = 1e-2, fix_mat = fix_mat, clipping_prob = 3., plots = mat_plots, verbose = verbose)
+      valid_mat = check_mat(mat_filename, iteration, min_stars_alignment, alpha = alpha, center_tolerance = center_tolerance, fix_mat = fix_mat, clipping_prob = 3., plots = mat_plots, verbose = verbose)
 
       if all(valid_mat):
 
@@ -1212,7 +1214,7 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
          # Assign the maximum (worst) QFIT parameter to saturated stars.
          eradec_hst[lnk.xhst_gaia.notnull()] = lnk[lnk.xhst_gaia.notnull()].q_hst.replace({np.nan:lnk.q_hst.mean()+5*lnk.q_hst.std()}).copy()
 
-         # 0.25 seems reasonable, although this may be tuned through an empirical function.
+         # 0.25 was chosen after empirical tests.
          eradec_hst *= pixel_scale_mas * 0.25
 
          lnk['relative_hst_gaia_pmra'] = -(lnk.x_gaia - lnk.xhst_gaia) * pixel_scale_mas / t_baseline
@@ -1242,7 +1244,8 @@ def xym2pm_GH(iteration, Gaia_HST_table_field, Gaia_HST_table_filename, HST_imag
          print('   Skipping image.')
          match = pd.DataFrame()
    except:
-      print('-->%s: no match found.'%os.path.basename(HST_image_filename))
+      if verbose:
+         print('-->%s  (%s, %ss): no match found.'%(os.path.basename(HST_image_filename), filter, exptime))
       match = pd.DataFrame()
 
    return match
@@ -1256,7 +1259,7 @@ def xym2pm_GH_multiproc(args):
    return xym2pm_GH(*args)
 
 
-def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_stat = 'wmean', no_plots = False, verbose = True, quiet = False, ask_user_stop = False, max_iterations = 10, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = ''):
+def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_path, exec_path, date_reference_second_epoch, only_use_members = False, preselect_cmd = False, preselect_pm = False, rewind_stars = True, force_pixel_scale = None, force_max_separation = None, force_use_sat = True, fix_mat = True, no_amplifier_based = False, min_stars_amp = 25, force_wcs_search_radius = None, n_components = 1, clipping_prob = 6, use_only_good_gaia = False, min_stars_alignment = 100, use_stat = 'wmean', no_plots = False, verbose = True, quiet = False, ask_user_stop = False, max_iterations = 10, previous_xym2pm = False, remove_previous_files = True, n_processes = 1, plot_name = '', save_temporary_results = False, temporary_results_filename = ''):
 
    """
    This routine will launch xym2pm_GH Fortran routine in parallel or serial using the correct arguments.
@@ -1271,8 +1274,10 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
    else:
       mat_plots = ~no_plots
 
-   if use_only_good_gaia:
-      Gaia_HST_table['use_for_alignment'] = Gaia_HST_table.clean_label.values
+   if use_only_good_gaia & rewind_stars:
+      Gaia_HST_table['use_for_alignment'] = Gaia_HST_table.clean_label.values and Gaia_HST_table.pmra.notnull()
+   elif rewind_stars:
+      Gaia_HST_table['use_for_alignment'] = Gaia_HST_table.pmra.notnull()
    else:
       Gaia_HST_table['use_for_alignment'] = True
 
@@ -1318,8 +1323,8 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
          u_field_stars = Gaia_HST_table.loc[Gaia_HST_table['HST_image'].str.contains(str(obs_id)), 'use_for_alignment'].sum()
 
          # We assume that the some parts of the image can have slightly lower stars density than others.
-         # Therefore, we require 4.5 times the number of stars per amplifier in the entire image instead of 4.
-         if (u_field_stars < min_stars_amp*4.5) and (no_amplifier_based == False):
+         # Therefore, we require 5 times the number of stars per amplifier in the entire image instead of 4.
+         if (u_field_stars < min_stars_amp*5) and (no_amplifier_based == False):
             print('WARNING: Not enough stars for alignment in %s as to separate amplifiers. Only one channel will be used.'%HST_image)
             no_amplifier_based_inuse = True
          elif (u_field_stars >= min_stars_amp*5) and (no_amplifier_based == False):
@@ -1369,7 +1374,12 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
          pass
 
       # Obtain absolute PMs
-      Gaia_HST_table = absolute_pm(Gaia_HST_table.join(lnks_averaged), clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = plot_name, iteration = iteration)
+      Gaia_HST_table = absolute_pm(Gaia_HST_table.join(lnks_averaged), use_only_good_gaia = use_only_good_gaia, clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = plot_name, iteration = iteration)
+
+      # Ir rewind is in use, we complete the PMs from Gaia with those measured in the first iteration.
+      if (rewind_stars) & (iteration == 0):
+         Gaia_HST_table.loc[Gaia_HST_table.pmra.notnull(), 'hst_gaia_pmra_%s'%use_stat] = Gaia_HST_table.loc[Gaia_HST_table.pmra.notnull(), 'pmra'].values
+         Gaia_HST_table.loc[Gaia_HST_table.pmdec.notnull(), 'hst_gaia_pmdec_%s'%use_stat] = Gaia_HST_table.loc[Gaia_HST_table.pmdec.notnull(), 'pmdec'].values
 
       # Membership selection
       if only_use_members:
@@ -1389,16 +1399,20 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
             Gaia_HST_table.loc[Gaia_HST_table.use_for_alignment, 'clustering_pm'] = True
             gauss_center = [0,0]
 
-         Gaia_HST_table['clustering_data'] = Gaia_HST_table.clustering_cmd & Gaia_HST_table.clustering_pm
+         clustering_data = Gaia_HST_table.clustering_cmd & Gaia_HST_table.clustering_pm
 
          # Select stars in the PM space asuming spherical covariance (Reasonable for dSphs and globular clusters) 
-         pm_clustering = pm_cleaning_GMM_recursive(Gaia_HST_table.copy(), ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat], ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat], data_0 = gauss_center, n_components = n_components, covariance_type = 'full', clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i.png'%(plot_name, iteration))
+         pm_clustering = pm_cleaning_GMM_recursive(Gaia_HST_table.copy(), ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat], ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat], clustering_data = clustering_data, data_0 = gauss_center, n_components = n_components, covariance_type = 'full', clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i.png'%(plot_name, iteration))
+      else:
+         clustering_data = pd.Series(data= [True]*len(Gaia_HST_table))
+         pm_clustering = pd.Series(data= [True]*len(Gaia_HST_table))
 
-         Gaia_HST_table['use_for_alignment'] = pm_clustering & Gaia_HST_table.clustering_data
-
-      elif not rewind_stars:
+      if (not only_use_members) and (not rewind_stars):
          convergence = True
-      
+
+      # GaiaHub will only use stars with Gaia PMs to set up the reference frames, and those that pased the selection
+      Gaia_HST_table['use_for_alignment'] = pm_clustering & clustering_data & Gaia_HST_table.loc[:, 'use_for_absolute_ref_frame_%s'%use_stat]
+
       # Useful statistics:
       id_pms = np.isfinite(Gaia_HST_table['hst_gaia_pmra_%s'%use_stat]) & np.isfinite(Gaia_HST_table['hst_gaia_pmdec_%s'%use_stat])
 
@@ -1416,15 +1430,18 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
       elif iteration > 0:
          pmra_diff_evo.append(np.nanmean(pmra_evo[-1] - pmra_evo[-2]))
          pmdec_diff_evo.append(np.nanmean(pmdec_evo[-1] - pmdec_evo[-2]))
-         
+
          # If rewind_stars is True, the code will converge when the difference between interations is smaller than the error in PMs
          threshold = np.nanmean(Gaia_HST_table.loc[id_pms, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].mean())*1e-2
 
          print('PM variation = (%.4e, %.4e)  m.a.s.' %(pmra_diff_evo[-1], pmdec_diff_evo[-1]))
 
-         if (rewind_stars) & (iteration > 1):
-            print('Threshold = %.4e  m.a.s.'%threshold)
-            convergence = (np.abs(pmra_diff_evo[-1]) <= threshold) & (np.abs(pmdec_diff_evo[-1]) <= threshold)
+         if rewind_stars:
+             if iteration > 1:
+                print('Convergence threshold = %.4e  m.a.s.'%threshold)
+                convergence = (np.abs(pmra_diff_evo[-1]) <= threshold) & (np.abs(pmdec_diff_evo[-1]) <= threshold)
+             else:
+                convergence = False
          else:
             convergence = Gaia_HST_table.use_for_alignment.equals(previous_use_for_alignment)
 
@@ -1442,6 +1459,10 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
             print('WARNING: Answer not understood. Continuing execution.')
 
       previous_use_for_alignment = Gaia_HST_table.use_for_alignment.copy()
+
+      if save_temporary_results:
+          Gaia_HST_table[Gaia_HST_table['relative_hst_gaia_pmdec_%s'%use_stat].notnull() & Gaia_HST_table['relative_hst_gaia_pmra_%s'%use_stat].notnull()].to_csv(temporary_results_filename.split('.csv')[0]+'_%i.csv'%iteration)
+
       iteration += 1
 
    if (n_images > 1) and (n_processes != 1):
@@ -1557,29 +1578,31 @@ def weighted_avg_err(table):
    return pd.concat([weighted_avg, weighted_avg_error, avg, avg_error, median, median_err, std])
 
 
-def absolute_pm(table, n_components = 1, covariance_type = 'full', clipping_prob = 3, no_plots = True, verbose = True, plot_name = '', iteration = ''):
+def absolute_pm(table, use_only_good_gaia = True, n_components = 1, covariance_type = 'full', clipping_prob = 3, no_plots = True, verbose = True, plot_name = '', iteration = ''):
    """
    This routine computes the absolute PM just adding the absolute differences between Gaia and HST PMs.
    """   
 
    # We try to select only good Gaia stars to derive the absolute reference frame:
-   Good_gaia = table.clean_label == True
 
    for use_stat in ['mean', 'wmean', 'median']:
 
       # We try to select only good Gaia-HST stars to derive the absolute reference frame:
       hst_gaia_error_threshold = table.loc[:, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].quantile(q = 0.85)
       Good_hst_gaia = (table.loc[:, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]] <= hst_gaia_error_threshold).all(axis = 1)
-      Good_stars = Good_gaia & Good_hst_gaia
 
-      pm_differences = table.loc[Good_stars, ['pmra', 'pmdec']] - table.loc[Good_stars, ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat]].values
-      pm_differences_error = np.sqrt(table.loc[Good_stars, ['pmra_error', 'pmdec_error']]**2 + table.loc[Good_stars, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].values**2)
+      if use_only_good_gaia:
+         Good_stars = Good_gaia & Good_hst_gaia
+      else:
+         Good_stars = Good_hst_gaia
+
+      pm_differences = table.loc[Good_stars, ['pmra', 'pmdec']].copy() - table.loc[Good_stars, ['relative_hst_gaia_pmra_%s'%use_stat, 'relative_hst_gaia_pmdec_%s'%use_stat]].values
+      pm_differences_error = np.sqrt(table.loc[Good_stars, ['pmra_error', 'pmdec_error']].copy()**2 + table.loc[Good_stars, ['relative_hst_gaia_pmra_%s_error'%use_stat, 'relative_hst_gaia_pmdec_%s_error'%use_stat]].values**2)
 
       ref = pm_differences.join(pm_differences_error)
-      ref['clustering_data'] = True
 
       try:
-         pm_clustering = pm_cleaning_GMM_recursive(ref, ['pmra', 'pmdec'], ['pmra_error', 'pmdec_error'], data_0 = pm_differences.mean(axis = 0), n_components = n_components, covariance_type = 'full', clipping_prob = 3, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i_absolute_%s.png'%(plot_name, iteration, use_stat))
+         pm_clustering = pm_cleaning_GMM_recursive(ref, ['pmra', 'pmdec'], ['pmra_error', 'pmdec_error'], data_0 = pm_differences.mean(axis = 0), n_components = n_components, covariance_type = 'full', clipping_prob = clipping_prob, verbose = verbose,  no_plots = no_plots, plot_name = '%s_%i_absolute_%s.png'%(plot_name, iteration, use_stat))
       except:
          print('Something went wrong... using all the stars to measure the %s absolute reference frame.'%use_stat)
          pm_clustering = [True]*len(ref)
@@ -1764,8 +1787,8 @@ def plot_results(table, lnks, hst_image_list, HST_path, avg_pm, use_stat = 'wmea
    ax.plot(table.loc[table.use_for_alignment == False, 'bp_rp'], table.loc[table.use_for_alignment == False, 'gmag'], 'k.', ms=2, alpha = 0.35)
    ax.plot(table.loc[table.use_for_alignment == True, 'bp_rp'], table.loc[table.use_for_alignment == True, 'gmag'], 'k.', ms=3)
 
-   ax.set_xlabel('G')
-   ax.set_ylabel('BP-RP')
+   ax.set_ylabel('G')
+   ax.set_xlabel('BP-RP')
 
    try:
       ax.set_ylim(np.nanmax(table.loc[:, 'gmag'])+0.5, np.nanmin(table.loc[:, 'gmag'])-0.5)

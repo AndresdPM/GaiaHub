@@ -84,10 +84,11 @@ def gaiahub(argv):
    parser.add_argument('--use_stat', type=str, default = 'wmean', help = ' By default, the code will try to make use of the errors obtained for each individual HST image in order to compute a final error-weighted mean for the PMs. This option forces the code to use a normal arithmetic mean or the median instead. Useful if you think all HST images should have exactly the same weight. Options are "mean" for the arithmetic mean, "wmean" for the error-weighted mean, and "median" for the median')
 
    #Miscellaneus options
-   parser.add_argument('--n_processes', type = int, default = -1, help='The number of jobs to run in parallel. Default is -1, which uses all the available processors. For single-threaded execution use 1.')
+   parser.add_argument('--n_processes', type = int, default = -2, help='The number of jobs to run in parallel. Default is -2, which uses all the available processors except one. For single-threaded execution use 1. In order to use all the processors, use -1. You can also use specific numbers such, for example, 13 processors.')
    parser.add_argument('--load_existing', action='store_true', help='With this flag, the code will try to resume the previous Gaia search and load previous individual queries. Useful when a specific search is failing due to connection problems.')
    parser.add_argument('--no_plots', action='store_true', help='This flag prevents the code from making any plot. Useful when using distributed computing or in situations when python is not able to open an plotting device.')
    parser.add_argument('--remove_previous_files', action='store_true', help='Remove previous intermediate files.')
+   parser.add_argument('--save_temporary_results', action='store_true', help='Save temporary results. Useful to study the evolution between iterations.')
    parser.add_argument('--verbose', action='store_true', help='It controls the program verbosity. Default True.')
    parser.add_argument('--quiet', action='store_true', help='This flag deactivate the interactivity of GaiaHub. When used, GaiaHub will use all the default values without asking the user. This flag override and prevent the "--preselect_cmd" option.')
 
@@ -111,7 +112,7 @@ def gaiahub(argv):
    """
    The script tries to load an existing Gaia table, otherwise it will download it from the Gaia archive.
    """
-   installation_path = ''
+   installation_path = '/home/adpm/Software/t1/GaiaHub'
    gh.remove_file(args.exec_path)
    os.symlink(installation_path, args.exec_path)
 
@@ -148,7 +149,7 @@ def gaiahub(argv):
 
       Gaia_table.to_csv(args.Gaia_clean_table_filename, index = False)
    
-   if args.no_error_correction:
+   if not args.no_error_correction:
       """
       The script increase a bit all positional errors according to EDR3 verification papers.
       """
@@ -158,15 +159,17 @@ def gaiahub(argv):
    """
    The script tries to load an existing HST table, otherwise it will download it from the MAST archive.
    """
-   obs_table, data_products_by_obs = gh.search_mast(args.ra, args.dec, search_width = args.search_width, search_height = args.search_height, filters = args.hst_filters, project = args.project, t_exptime_min = args.hst_integration_time_min, t_exptime_max = args.hst_integration_time_max, date_second_epoch = args.date_second_epoch, time_baseline = args.time_baseline)
+   if args.load_existing:
+      obs_table = pd.read_csv(args.HST_obs_table_filename)
+      data_products_by_obs = pd.read_csv(args.HST_data_table_products_filename)
 
-   obs_table.to_csv(args.HST_obs_table_filename, index = False)
-   data_products_by_obs.to_csv(args.HST_data_table_products_filename, index = False)
+   else:
+      obs_table, data_products_by_obs = gh.search_mast(args.ra, args.dec, search_width = args.search_width, search_height = args.search_height, filters = args.hst_filters, project = args.project, t_exptime_min = args.hst_integration_time_min, t_exptime_max = args.hst_integration_time_max, date_second_epoch = args.date_second_epoch, time_baseline = args.time_baseline)
 
-   """
-   Plot results and find Gaia stars within HST fields
-   """
-   obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, use_only_good_gaia = args.use_only_good_gaia,  min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
+      """
+      Plot results and find Gaia stars within HST fields
+      """
+      obs_table = gh.plot_fields(Gaia_table, obs_table, args.HST_path, use_only_good_gaia = args.use_only_good_gaia,  min_stars_alignment = args.min_stars_alignment, no_plots = args.no_plots, name = args.base_path+args.base_file_name+'_search_footprint.pdf')
 
    if (not obs_table.empty) and (obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment).any():
 
@@ -176,7 +179,7 @@ def gaiahub(argv):
       obs_table = obs_table.loc[obs_table['gaia_stars_per_obs'] >= args.min_stars_alignment, :]
 
       """
-      Ask whether the user wish to download the available HST images 
+      Ask whether the user wish to download the available HST images
       """
       print(obs_table.loc[:, ['obsid', 'filters', 'n_exp', 'i_exptime', 'obs_time', 't_baseline', 'gaia_stars_per_obs', 'proposal_id', 's_ra', 's_dec', 'field_id']].to_string(index=False), '\n')
 
@@ -191,7 +194,7 @@ def gaiahub(argv):
          print("Type 'y' or just press enter for all observations, 'n' for none. Type the id within parentheses at the right (field_id) if you wish to use that specific set of observations. You can enter several ids separated by space. \n")
          HST_obs_to_use = input('Please type your answer and press enter: ') or 'y'
          print('\n')
-      
+
       try:
          HST_obs_to_use = gh.str2bool(HST_obs_to_use)
       except:
@@ -204,7 +207,8 @@ def gaiahub(argv):
       if HST_obs_to_use is not False:
          if HST_obs_to_use is True:
             HST_obs_to_use = list(obs_table['obsid'].values)
-         hst_images = gh.download_HST_images(data_products_by_obs.loc[data_products_by_obs['parent_obsid'].isin(HST_obs_to_use), :], path = args.HST_path)
+         if not args.load_existing:
+            hst_images = gh.download_HST_images(data_products_by_obs.loc[data_products_by_obs['parent_obsid'].isin(HST_obs_to_use), :], path = args.HST_path)
       else:
          print('\nExiting now.\n')
          gh.remove_file(args.exec_path)
@@ -219,12 +223,12 @@ def gaiahub(argv):
       """
       Call hst1pass_GH
       """
-      gh.launch_hst1pass_GH(flc_images, HST_obs_to_use, args.HST_path, args.exec_path, force_fmin = args.fmin, force_hst1pass = args.hst1pass, n_processes = args.n_processes)
+      gh.launch_hst1pass_GH(flc_images, HST_obs_to_use, args.HST_path, args.exec_path, force_fmin = args.fmin, force_hst1pass = args.hst1pass, n_processes = args.n_processes, verbose = args.verbose)
 
       """
       Call xym2pm_GH
       """
-      Gaia_table_hst, lnks = gh.launch_xym2pm_GH(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_only_good_gaia = args.use_only_good_gaia, min_stars_alignment = args.min_stars_alignment, use_stat = args.use_stat, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, ask_user_stop = args.ask_user_stop, max_iterations = args.max_iterations, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.GaiaHub_output+'PM_Sel')
+      Gaia_table_hst, lnks = gh.launch_xym2pm_GH(Gaia_table.copy(), flc_images, HST_obs_to_use, args.HST_path, args.exec_path, args.date_reference_second_epoch, only_use_members = args.use_members, preselect_cmd = args.preselect_cmd, preselect_pm = args.preselect_pm, rewind_stars = args.rewind_stars, force_pixel_scale = args.pixel_scale, force_max_separation = args.max_separation, force_use_sat = args.use_sat, fix_mat = args.fix_mat, no_amplifier_based = args.no_amplifier_based, min_stars_amp = args.min_stars_amp, force_wcs_search_radius = args.wcs_search_radius, n_components = args.pm_n_components, clipping_prob = args.clipping_prob_pm, use_only_good_gaia = args.use_only_good_gaia, min_stars_alignment = args.min_stars_alignment, use_stat = args.use_stat, no_plots = args.no_plots, verbose = args.verbose, quiet = args.quiet, ask_user_stop = args.ask_user_stop, max_iterations = args.max_iterations, previous_xym2pm = args.previous_xym2pm, remove_previous_files = args.remove_previous_files, n_processes = args.n_processes, plot_name = args.GaiaHub_output+'PM_Sel', save_temporary_results = args.save_temporary_results, temporary_results_filename = args.HST_Gaia_table_filename)
 
       """
       Save Gaia and HST tables
