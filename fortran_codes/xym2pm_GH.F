@@ -1936,7 +1936,7 @@
          do k = 1, 4
             okflag = xpm_o.gt.0.d0.and.ypm_o.gt.0.d0.and.   ! Gaia conditions
      .               usegaia.eq.1.and.
-     .               xchsto.gt.0.d0.and.ychsto.gt.0.d0.and. ! HST conditions
+     .               xrhsto.gt.0.d0.and.yrhsto.gt.0.d0.and. ! HST conditions
      .               mhsto.lt.mlim.and.qhsto.lt.qlim.and. 
      .               ((USESAT.and.qhsto.ge.0.d0).or.
      .           (.not.USESAT.and.qhsto.gt.0.d0)).and.
@@ -1992,7 +1992,7 @@
 ! Begin local transformation
          do NSTAR = 1, NSTARs
 
-            if (xchsto(NSTAR).eq.0.d0.and.ychsto(NSTAR).eq.0.d0.and.  ! Star not present in HST
+            if (xrhsto(NSTAR).eq.0.d0.and.yrhsto(NSTAR).eq.0.d0.and.  ! Star not present in HST
      .          mhsto(NSTAR).eq.0.d0.and.qhsto(NSTAR).eq.0.d0) cycle
 
             xhst_amp(NSTAR) =
