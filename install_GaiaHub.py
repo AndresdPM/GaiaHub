@@ -263,7 +263,7 @@ def installation():
          get_hst1pass(installation_folder, repo = 'https://www.stsci.edu/~jayander')
 
       print('The installation needs to compile two Fortran routines.')
-      print('There are known issues with very recent compilers.')
+      print('There could be issues with very recent compilers.')
       print('We recommend to use version 8 or lower of gfortran.')
       print('By default, the command "gfortran" will be executed.')
       compiler = input('\nPress enter to accept or introduce an alternative Fortran compiler command if you wish.\n') or "gfortran"
