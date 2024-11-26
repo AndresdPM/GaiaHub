@@ -1469,9 +1469,33 @@ def launch_xym2pm_GH(Gaia_HST_table, data_products_by_obs, HST_obs_to_use, HST_p
       pool.close()
 
    Gaia_HST_table = Gaia_HST_table[Gaia_HST_table['relative_hst_gaia_pmdec_%s'%use_stat].notnull() & Gaia_HST_table['relative_hst_gaia_pmra_%s'%use_stat].notnull()]
+   
+   # add padding in case it failed to get the pmra for some stars, this makes the transpose operation not fail, specially for fields with a few objects
+   try:
+      # Process pmra_evo
+      pmra_evo_cleaned = [series.values for series in pmra_evo]
+      max_length_pmra = max(len(seq) for seq in pmra_evo_cleaned)
+      pmra_evo_padded = [
+         np.pad(seq, (0, max_length_pmra - len(seq)), constant_values=np.nan)
+         for seq in pmra_evo_cleaned
+      ]
+      pmra_evo = np.array(pmra_evo_padded).T
 
-   pmra_evo = np.array(pmra_evo).T
-   pmdec_evo = np.array(pmdec_evo).T
+      # Process pmdec_evo
+      pmdec_evo_cleaned = [series.values for series in pmdec_evo]
+      max_length_pmdec = max(len(seq) for seq in pmdec_evo_cleaned)
+      pmdec_evo_padded = [
+         np.pad(seq, (0, max_length_pmdec - len(seq)), constant_values=np.nan)
+         for seq in pmdec_evo_cleaned
+      ]
+      pmdec_evo = np.array(pmdec_evo_padded).T
+
+   except Exception as e:
+      print("Error processing pmra_evo or pmdec_evo:", e)
+      raise
+
+   # pmra_evo = np.array(pmra_evo).T
+   # pmdec_evo = np.array(pmdec_evo).T
 
    hst_gaia_pm_lsqt_evo = np.array([hst_gaia_pmra_lsqt_evo, hst_gaia_pmdec_lsqt_evo]).T
    pm_diff_evo = np.array([pmra_diff_evo, pmdec_diff_evo]).T
@@ -1526,6 +1550,19 @@ def find_stars_to_align(stars_catalog, HST_image_filename):
    footprint = []
    for ii in [2, 5]:
       wcs = WCS(hdu[ii].header)
+      # this is failing for some old MAST files that might have a different structure
+      try:
+         footprint_chip = wcs.calc_footprint()
+      except Exception as e: 
+         try: # Here it should try something that makes it work with old files but I haven't figured it out yet. 
+            wcs = WCS(hdu[4].header)
+            footprint_chip = wcs.calc_footprint()
+         except Exception as e:
+            print(f"Error calculating footprint for HDU {ii}: {e}")
+            print(f'This image has only {len(hdu)} chips.')
+         continue
+
+      
       footprint_chip = wcs.calc_footprint()
 
       # We add 10 arcsec of HST pointing error to the footprint to ensure we have all the stars.
